@@ -86,6 +86,8 @@ export interface AgentRunRecord {
   id: string;
   instruction: string;
   plan?: unknown;
+  report?: string;
+  reportImageUrl?: string;
   status: 'planning' | 'awaiting-approval' | 'executing' | 'done' | 'failed';
   createdAt: number;
 }

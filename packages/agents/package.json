@@ -9,6 +9,7 @@
   "scripts": { "typecheck": "tsc --noEmit" },
   "dependencies": {
     "@aliran/core": "workspace:*",
-    "@aliran/delegation": "workspace:*"
+    "@aliran/delegation": "workspace:*",
+    "viem": "^2.21.55"
   }
 }

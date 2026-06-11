@@ -423,5 +423,37 @@ export async function revokeDelegation(bundle: SignedDelegationBundle): Promise<
   return { ok: receipt.success, txHash, userOpHash, dryRun: false };
 }
 
+/**
+ * Rebuild a SignedDelegationBundle from a persisted delegation id, walking the
+ * parent chain. Lets stateless API requests (revoke, overspend) operate on
+ * delegations created in an earlier request/run.
+ */
+export function bundleFromRecordId(id: string): SignedDelegationBundle | null {
+  const db = store.read();
+  const byId = new Map(db.delegations.map((d) => [d.id, d]));
+  const rec = byId.get(id);
+  if (!rec) return null;
+
+  // Build the signed chain leaf -> root.
+  const chain: unknown[] = [];
+  let cur = rec;
+  while (cur) {
+    chain.push(cur.signedDelegation);
+    cur = cur.parentId ? byId.get(cur.parentId)! : undefined!;
+    if (!cur) break;
+  }
+
+  return {
+    signed: rec.signedDelegation,
+    chain,
+    fromRole: rec.fromRole,
+    toRole: rec.toRole,
+    fromAddress: rec.fromAddress,
+    toAddress: rec.toAddress,
+    capUsdc: rec.capUsdc,
+    recordId: rec.id,
+  };
+}
+
 export { usdc as toUsdcUnits };
 export type { AliranSmartAccount };

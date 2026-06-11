@@ -62,7 +62,7 @@ export async function runMonth(opts: {
   // 6. Creative writes the report.
   const report = await creativeRun({ withImage: opts.withImage });
 
-  store.updateRun(run.id, { status: 'done' });
+  store.updateRun(run.id, { status: 'done', report: report.report, reportImageUrl: report.imageUrl });
   store.emit({ agent: 'cfo', action: 'month complete', status: 'success' });
 
   return { runId: run.id, plan, payroll, procurement, report, ctx };
