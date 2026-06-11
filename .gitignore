@@ -9,3 +9,6 @@ aliran.db
 aliran.db-*
 *.tsbuildinfo
 .turbo/
+
+# runtime db (regenerate via: pnpm setup:demo)
+aliran.db.json
