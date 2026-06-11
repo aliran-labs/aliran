@@ -1,0 +1,49 @@
+{
+  "delegations": [],
+  "transactions": [],
+  "tasks": [
+    {
+      "title": "Ship delegation tree UI",
+      "description": "Implement the live delegation tree view with caps + remaining spend.",
+      "contributorAddress": "0x1111111111111111111111111111111111111111",
+      "amountUsdc": 120,
+      "status": "done",
+      "evidence": "PR #42 merged; screenshot of tree rendering 4 nodes with caps.",
+      "id": "2f83ddf7-9d87-416a-b1a5-12d37e417ec9",
+      "createdAt": 1781155729144
+    },
+    {
+      "title": "Write x402 buyer integration",
+      "description": "Buyer pays the seller market-brief endpoint via ERC-7710 delegation.",
+      "contributorAddress": "0x2222222222222222222222222222222222222222",
+      "amountUsdc": 90,
+      "status": "done",
+      "evidence": "Receipt stored: 402 challenge + payment hash + 200 response logged.",
+      "id": "b22e58dc-6d69-466b-b3ee-682817c1f71e",
+      "createdAt": 1781155729148
+    },
+    {
+      "title": "Audit caveat enforcement",
+      "description": "Confirm a redelegation cannot exceed parent cap; document revert.",
+      "contributorAddress": "0x3333333333333333333333333333333333333333",
+      "amountUsdc": 80,
+      "status": "done",
+      "evidence": "Overspend attempt reverted on-chain; revert reason captured.",
+      "id": "1bc2356a-cec1-4fbd-9789-f81989a7d038",
+      "createdAt": 1781155729152
+    },
+    {
+      "title": "Design report cover art",
+      "description": "Creative agent generates a monthly treasury report cover.",
+      "contributorAddress": "0x1111111111111111111111111111111111111111",
+      "amountUsdc": 40,
+      "status": "open",
+      "evidence": "",
+      "id": "50c1c4a3-1070-43ec-be44-ba20ee2f3d06",
+      "createdAt": 1781155729154
+    }
+  ],
+  "receipts": [],
+  "activity": [],
+  "runs": []
+}

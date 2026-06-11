@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.next/
+*.log
+.env
+.env.local
+.DS_Store
+aliran.db
+aliran.db-*
+*.tsbuildinfo
+.turbo/

@@ -1,0 +1,23 @@
+{
+  "name": "aliran",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Autonomous treasury OS: human grants one capped delegation to an AI CFO agent that redelegates stricter budgets to worker agents. Payments via ERC-7710 redemption.",
+  "packageManager": "pnpm@9.15.1",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @aliran/web --filter @aliran/seller dev",
+    "dev:web": "pnpm --filter @aliran/web dev",
+    "dev:seller": "pnpm --filter @aliran/seller dev",
+    "build": "pnpm -r build",
+    "setup:demo": "tsx scripts/setup-demo.ts",
+    "m1": "tsx scripts/m1-delegation-chain.ts",
+    "m2": "tsx scripts/m2-x402-buy.ts",
+    "m3": "tsx scripts/m3-run-month.ts",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2"
+  }
+}
