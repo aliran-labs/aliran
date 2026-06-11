@@ -1,38 +1,50 @@
-import { createOpenDelegation, ScopeType } from '@metamask/smart-accounts-kit';
-import { parseUnits, keccak256, toHex, type Address, type Hex } from 'viem';
+import { createx402DelegationProvider } from '@metamask/smart-accounts-kit/experimental';
+import { keccak256, toHex, type Hex } from 'viem';
 import { config, store, USDC_DECIMALS, type AgentRole } from '@aliran/core';
 import { smartAccountForRole } from './smartAccount';
 
 /**
- * x402 buyer (ERC-7710 delegated payment).
+ * x402 buyer (ERC-7710 delegated payment) — aligned with the official MetaMask
+ * buyer guide (`guides/x402/buyer/delegations`).
  *
- * Flow (per the x402 + ERC-7710 overview/seller guides):
- *   1. GET the protected resource. Expect HTTP 402 with a base64 `PAYMENT-REQUIRED`
- *      header (and a JSON body) describing `accepts[]`.
- *   2. Require accepts[0].extra.assetTransferMethod === 'erc7710'.
- *   3. Create an OPEN delegation (createOpenDelegation) restricted to the
- *      facilitator + the quoted amount, sign it, encode the chain as the payment
- *      payload (base64 JSON), and retry with a `PAYMENT-SIGNATURE` header.
- *   4. On 200, persist a receipt (challenge + payload hash + response).
+ * The guide's canonical client is `wrapFetchWithPayment(fetch, x402HTTPClient)`
+ * driven by an `x402Erc7710Client` whose delegation is produced by
+ * `createx402DelegationProvider({ account })`. We use that **same provider**
+ * primitive (it ships in `@metamask/smart-accounts-kit/experimental`) to build
+ * the payment, and keep an explicit fetch/retry as the transport so the whole
+ * thing runs offline against our mock seller.
  *
- * MOCK_MODE: builds + signs a real open delegation and a real payload, but the
- * "settlement" is whatever the mock seller echoes. No broadcast occurs (the
- * facilitator would settle on-chain in real mode). The receipt is stored either way.
+ * The provider, given the 402 `requirements`, internally:
+ *   • creates an OPEN delegation (any redeemer), then
+ *   • RESTRICTS it to the facilitator via a RedeemerEnforcer caveat built from
+ *     `requirements.extra.facilitatorAddresses`, plus an AllowedCalldata caveat
+ *     pinned to `requirements.payTo` and a Timestamp (expiry) caveat, then
+ *   • signs it (EIP-712) and returns `{ delegationManager, permissionContext,
+ *     delegator }` where `permissionContext = encodeDelegations(chain)` — the
+ *     canonical encoded delegation chain that is the payment payload.
  *
- * Real mode: replace the hand-rolled retry with the official x402 buyer client
- * once the exact wire encoding is pinned from the buyer guide (see NOTES.md).
- * The shape below already matches the seller stub's accepted headers.
+ * MOCK_MODE: the delegation is really built, restricted, and signed (offline);
+ * only the facilitator's on-chain settlement is mocked by our seller echo.
+ *
+ * Real-mode swap (BLOCKED.md): replace the fetch/retry below with
+ * `wrapFetchWithPayment` from `@x402/fetch` + `x402HTTPClient`/`x402Client`
+ * (`@x402/core/client`) registering an `x402Erc7710Client` (`@metamask/x402`).
+ * Those three packages are not yet installed; the provider + payload here are
+ * already the official ones, so settlement is the only remaining wiring.
  */
 
 export interface X402Accept {
   scheme: string;
   network: string;
-  price: string;
+  /** atomic-unit amount the kit reads (BigInt(amount)); `price` is display only. */
+  amount?: string;
+  price?: string;
   asset: string;
   payTo: string;
   resource?: string;
   mimeType?: string;
-  extra?: { assetTransferMethod?: string };
+  maxTimeoutSeconds?: number;
+  extra?: { assetTransferMethod?: string; facilitatorAddresses?: string[] };
 }
 
 export interface X402Challenge {
@@ -50,10 +62,11 @@ export interface X402BuyResult {
   paymentPayloadHash?: string;
 }
 
-function priceToUsdcUnits(price: string): bigint {
-  // "$0.01" -> 0.01 USDC
-  const n = Number(price.replace(/[^0-9.]/g, ''));
-  return parseUnits((Number.isFinite(n) ? n : 0).toString(), USDC_DECIMALS);
+/** Human USDC amount for the UI, from the atomic `amount` or the `$price` string. */
+function displayUsdc(accept: X402Accept): number {
+  if (accept.amount) return Number(accept.amount) / 10 ** USDC_DECIMALS;
+  if (accept.price) return Number(accept.price.replace(/[^0-9.]/g, '')) || 0;
+  return 0;
 }
 
 /**
@@ -62,11 +75,7 @@ function priceToUsdcUnits(price: string): bigint {
 export async function buyX402(opts: {
   url: string;
   buyerRole: AgentRole;
-  /** facilitator the open delegation is restricted to; falls back to config. */
-  facilitator?: string;
 }): Promise<X402BuyResult> {
-  const facilitator = opts.facilitator || config.X402_FACILITATOR_URL || 'mock-facilitator';
-
   store.emit({
     agent: opts.buyerRole,
     action: `x402 GET ${shortUrl(opts.url)}`,
@@ -106,39 +115,64 @@ export async function buyX402(opts: {
     return { ok: false, status: 402, error };
   }
 
+  const facilitatorAddresses = accept.extra?.facilitatorAddresses ?? [];
+  if (facilitatorAddresses.length === 0) {
+    const error = '402 challenge missing extra.facilitatorAddresses (cannot restrict the delegation)';
+    store.emit({ agent: opts.buyerRole, action: 'x402 missing facilitators', status: 'failed', detail: error });
+    return { ok: false, status: 402, error };
+  }
+
   store.emit({
     agent: opts.buyerRole,
-    action: `received 402 — ${accept.price} on ${accept.network}`,
+    action: `received 402 — ${accept.price ?? accept.amount} on ${accept.network}`,
     status: 'info',
-    detail: `payTo=${accept.payTo.slice(0, 10)}… method=erc7710`,
+    detail: `payTo=${accept.payTo.slice(0, 10)}… facilitator=${facilitatorAddresses[0]!.slice(0, 10)}… method=erc7710`,
   });
 
-  // --- 2. build + sign an OPEN delegation restricted to the facilitator -----
+  // --- 2. official provider: open delegation RESTRICTED to the facilitator ---
+  // createx402DelegationProvider builds an open delegation, then constrains it
+  // with a RedeemerEnforcer caveat from requirements.extra.facilitatorAddresses,
+  // an AllowedCalldata caveat for payTo, and a Timestamp (expiry) caveat; it
+  // signs and returns the encoded delegation chain (permissionContext).
   const buyer = await smartAccountForRole(opts.buyerRole);
-  const maxAmount = priceToUsdcUnits(accept.price);
+  const provider = createx402DelegationProvider({ account: buyer as never });
 
-  const openDelegation = createOpenDelegation({
-    from: buyer.address,
-    environment: buyer.environment,
-    scope: {
-      type: ScopeType.Erc20TransferAmount,
-      tokenAddress: accept.asset as Address,
-      maxAmount,
-    },
-  });
-  const signature = await buyer.signDelegation({ delegation: openDelegation });
-  const signedOpen = { ...openDelegation, signature };
+  // Map the parsed 402 into the kit's `requirements` shape (atomic `amount`,
+  // `asset`, `network`, `payTo`, `extra.facilitatorAddresses`).
+  const requirements = {
+    scheme: accept.scheme,
+    network: accept.network,
+    amount: accept.amount ?? String(Math.round(displayUsdc(accept) * 10 ** USDC_DECIMALS)),
+    asset: accept.asset,
+    payTo: accept.payTo,
+    resource: accept.resource,
+    maxTimeoutSeconds: accept.maxTimeoutSeconds ?? 300,
+    extra: { assetTransferMethod: 'erc7710', facilitatorAddresses },
+  };
 
-  // Encode the payment payload (delegation chain) as base64 JSON. The real
-  // x402 buyer client encodes this per the facilitator's expected schema; the
-  // mock seller accepts any non-empty PAYMENT-SIGNATURE.
+  let permissionContext: string;
+  let delegationManager: string;
+  try {
+    const built = (await provider(requirements as never)) as {
+      delegationManager: string;
+      permissionContext: string;
+      delegator: string;
+    };
+    permissionContext = built.permissionContext;
+    delegationManager = built.delegationManager;
+  } catch (e) {
+    const error = `failed to build x402 delegation: ${(e as Error).message}`;
+    store.emit({ agent: opts.buyerRole, action: 'x402 delegation build failed', status: 'failed', detail: error });
+    return { ok: false, status: 402, error };
+  }
+
+  // The payment payload is the x402 envelope carrying the encoded delegation
+  // chain (permissionContext). This is what wrapFetchWithPayment would send.
   const payload = {
     x402Version: challenge!.x402Version,
     scheme: accept.scheme,
     network: accept.network,
-    assetTransferMethod: 'erc7710',
-    facilitator,
-    delegationChain: [signedOpen],
+    payload: { assetTransferMethod: 'erc7710', delegationManager, permissionContext },
   };
   const payloadB64 = Buffer.from(JSON.stringify(payload, bigintReplacer)).toString('base64');
   const paymentPayloadHash = keccak256(toHex(payloadB64)) as Hex;
@@ -147,17 +181,17 @@ export async function buyX402(opts: {
     agent: opts.buyerRole,
     action: 'constructed ERC-7710 payment payload',
     status: 'info',
-    detail: `open delegation signed, restricted to facilitator; hash=${paymentPayloadHash.slice(0, 12)}…`,
+    detail: `delegation restricted to facilitator (RedeemerEnforcer); permissionContext ${permissionContext.length}B; hash=${paymentPayloadHash.slice(0, 12)}…`,
   });
 
   // --- 3. retry with payment header ----------------------------------------
   let paid: Response;
   try {
+    // x402 standard carries the payment in a single `X-PAYMENT` header. The
+    // encoded delegation chain is large (~KBs), so sending it once keeps the
+    // total header size under the server's limit.
     paid = await fetch(opts.url, {
-      headers: {
-        'PAYMENT-SIGNATURE': payloadB64,
-        'X-PAYMENT': payloadB64, // include both spellings for compatibility
-      },
+      headers: { 'X-PAYMENT': payloadB64 },
     });
   } catch (e) {
     const error = `x402 retry failed: ${(e as Error).message}`;
@@ -181,19 +215,20 @@ export async function buyX402(opts: {
     response: data,
   });
 
+  const amountUsdc = displayUsdc(accept);
   store.addTransaction({
     kind: 'x402-payment',
     byRole: opts.buyerRole,
     toAddress: accept.payTo,
-    amountUsdc: Number(accept.price.replace(/[^0-9.]/g, '')),
+    amountUsdc,
     status: config.MOCK_MODE ? 'dry-run' : 'success',
-    memo: `x402 ${shortUrl(opts.url)} (${accept.price})`,
+    memo: `x402 ${shortUrl(opts.url)} (${accept.price ?? amountUsdc + ' USDC'})`,
   });
 
   store.emit({
     agent: opts.buyerRole,
     action: `x402 purchase complete — ${shortUrl(opts.url)}`,
-    amount: Number(accept.price.replace(/[^0-9.]/g, '')),
+    amount: amountUsdc,
     status: 'success',
     detail: `200 OK; settlement=${JSON.stringify(settlement)} ${config.MOCK_MODE ? '[mock]' : ''}`,
   });

@@ -32,10 +32,20 @@ Switching to real mode is a ~15-minute checklist, not a refactor.
 
 ## Code-side follow-ups gated on the above (tracked so they aren't forgotten)
 
-- **M2:** re-fetch the correct x402 *buyer* guide URL (the guessed one 404'd) to
-  lock the `createOpenDelegation` signature + exact payment header field names,
-  then replace the mock seller guard with `@x402/express paymentMiddleware`.
-  Until then the seller stub emits a matching 402 and the buyer mocks the payload.
+- **M2 (buyer — DONE):** reconciled with the official guide
+  (`guides/x402/buyer/delegations`). The buyer now uses
+  `createx402DelegationProvider` (from the installed kit's `/experimental`),
+  which restricts the open delegation to `accepts[0].extra.facilitatorAddresses`
+  via a RedeemerEnforcer caveat and returns the canonical `permissionContext`.
+  **Real-mode swap remaining:** install + wire the transport client —
+  `pnpm --filter @aliran/delegation add @metamask/x402 @x402/core @x402/fetch`,
+  then replace the explicit fetch/retry in `x402.ts` with
+  `wrapFetchWithPayment(fetch, new x402HTTPClient(new x402Client().register('eip155:*', new x402Erc7710Client({ delegationProvider }))))`.
+- **M2 (seller):** replace the hand-rolled `x402Guard` with `@x402/express`
+  `paymentMiddleware` + `x402ResourceServer` + `x402ExactEvmErc7710ServerScheme`
+  + `HTTPFacilitatorClient`, and set `X402_FACILITATOR_ADDRESS` to the real
+  facilitator. Until then the seller stub emits a matching 402 (incl.
+  `amount` + `extra.facilitatorAddresses`) and echoes a settlement stub.
 - **M3:** confirm Venice tool-call response shape (OpenAI-compatible) against a
   live key; the agent runtime already targets the OpenAI tool-call schema.
 - **USDC verify:** confirm `USDC_ADDRESS` + decimals (6) on Base Sepolia.

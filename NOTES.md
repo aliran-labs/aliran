@@ -52,19 +52,48 @@ first real-mode run** — flagged in BLOCKED.md).
 
 1. **`BUNDLER_URL` missing from §5 env list** — added (see above). Redemption
    cannot work without a bundler; this is not optional.
-2. **x402 *buyer* guide page 404'd** at every guessed URL
-   (`/guides/x402/buyer/`, `/guides/x402/buy-with-delegations/`). Resolved as
-   far as needed for M2: `createOpenDelegation({ from, environment, scope })` is
-   **verified against the installed kit** — it returns a delegation whose
-   `delegate` is the ANY_DELEGATE sentinel `0x..0a11`, signs cleanly (132-byte
-   sig). The buyer (`packages/delegation/src/x402.ts`) implements: 402 → require
-   `accepts[0].extra.assetTransferMethod==='erc7710'` → sign open delegation
-   restricted to the asset+amount → base64 JSON payload in `PAYMENT-SIGNATURE`
-   (+`X-PAYMENT` for compatibility) → retry → store receipt.
-   **Remaining real-mode gap:** the *exact* facilitator wire-encoding of the
-   payload (the official `@x402/*` buyer client format). M2 mock works
-   end-to-end; before real settlement, swap the hand-rolled retry for the
-   official buyer client. Tracked in BLOCKED.md.
+2. **x402 *buyer* guide** — RESOLVED. The real page is
+   `https://docs.metamask.io/smart-accounts-kit/guides/x402/buyer/delegations/`
+   (my earlier guessed URLs 404'd). The official client is:
+
+   ```ts
+   import { createx402DelegationProvider } from '@metamask/smart-accounts-kit/experimental'
+   import { x402Erc7710Client } from '@metamask/x402'
+   import { x402Client, x402HTTPClient } from '@x402/core/client'
+   import { wrapFetchWithPayment } from '@x402/fetch'
+
+   const erc7710Client = new x402Erc7710Client({
+     delegationProvider: createx402DelegationProvider({ account: buyerSmartAccount }),
+   })
+   const core = new x402Client().register('eip155:*', erc7710Client)
+   const fetchWithPayment = wrapFetchWithPayment(fetch, new x402HTTPClient(core))
+   await fetchWithPayment(url, { method: 'GET' }) // does the whole 402 dance
+   ```
+
+   **Reconciliation done.** `createx402DelegationProvider` ships in the installed
+   kit's `/experimental` subpath and runs **fully offline** (only signs). Our
+   buyer (`packages/delegation/src/x402.ts`) now uses it instead of a hand-rolled
+   `createOpenDelegation`. Verified against the kit source
+   (`dist/experimental/index.mjs`): the provider reads `requirements`:
+   - `amount` (atomic units — `BigInt(requirements.amount)`, NOT `maxAmountRequired`),
+     `asset`, `network`, `payTo`, and
+   - **`extra.facilitatorAddresses`** (the docs prose says "facilitators"; the
+     actual installed field is `facilitatorAddresses`).
+
+   It builds an open delegation then constrains it via
+   `resolvex402DelegationCaveats`: the **RedeemerEnforcer** caveat restricts
+   redemption to `facilitatorAddresses` (← the requested "restrict to the
+   facilitator"), an **AllowedCalldata** caveat pins `payTo`, and a
+   **Timestamp** caveat adds expiry. It returns
+   `{ delegationManager, permissionContext, delegator }` where
+   `permissionContext = encodeDelegations([signedDelegation, ...existing])` — the
+   canonical encoded chain, which IS the payment payload.
+
+   Our seller now advertises `accepts[0].amount` + `extra.facilitatorAddresses`
+   to match. **Remaining real-mode gap (BLOCKED.md):** only the *transport* —
+   `wrapFetchWithPayment` + `@metamask/x402` + `@x402/core` + `@x402/fetch` (not
+   yet installed). The delegation construction + payload are already the official
+   ones; settlement wiring is the last swap.
 3. **Venice exact model names** — docs list example chat models but the catalog
    is large. `VENICE_MODEL` / `VENICE_IMAGE_MODEL` are env-driven with
    placeholder defaults; confirm exact slugs from the Venice models endpoint

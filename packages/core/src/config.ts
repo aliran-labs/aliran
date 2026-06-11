@@ -49,6 +49,9 @@ export const config = {
   SELLER_PAY_TO_ADDRESS: str(process.env.SELLER_PAY_TO_ADDRESS),
   SELLER_URL: str(process.env.SELLER_URL, 'http://localhost:4021'),
   X402_FACILITATOR_URL: str(process.env.X402_FACILITATOR_URL),
+  // Facilitator address(es) the buyer's open delegation is restricted to
+  // (RedeemerEnforcer caveat). Comma-separated; first is advertised by the seller.
+  X402_FACILITATOR_ADDRESS: str(process.env.X402_FACILITATOR_ADDRESS),
 
   RELAYER: str(process.env.RELAYER),
 } as const;
