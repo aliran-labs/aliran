@@ -52,14 +52,19 @@ first real-mode run** — flagged in BLOCKED.md).
 
 1. **`BUNDLER_URL` missing from §5 env list** — added (see above). Redemption
    cannot work without a bundler; this is not optional.
-2. **x402 *buyer* guide page 404'd** at the guessed URL
-   (`/guides/x402/buyer/`). I have the buyer flow shape (402 → parse
-   `accepts[0]`, require `extra.assetTransferMethod==='erc7710'` →
-   `createOpenDelegation` restricted to facilitator → encode chain into payment
-   header → retry with `PAYMENT-SIGNATURE`). Exact header field names and the
-   `createOpenDelegation` signature must be confirmed by re-fetching the correct
-   buyer-guide URL in **M2**. Fully mockable until then; the seller stub already
-   emits/accepts the matching headers.
+2. **x402 *buyer* guide page 404'd** at every guessed URL
+   (`/guides/x402/buyer/`, `/guides/x402/buy-with-delegations/`). Resolved as
+   far as needed for M2: `createOpenDelegation({ from, environment, scope })` is
+   **verified against the installed kit** — it returns a delegation whose
+   `delegate` is the ANY_DELEGATE sentinel `0x..0a11`, signs cleanly (132-byte
+   sig). The buyer (`packages/delegation/src/x402.ts`) implements: 402 → require
+   `accepts[0].extra.assetTransferMethod==='erc7710'` → sign open delegation
+   restricted to the asset+amount → base64 JSON payload in `PAYMENT-SIGNATURE`
+   (+`X-PAYMENT` for compatibility) → retry → store receipt.
+   **Remaining real-mode gap:** the *exact* facilitator wire-encoding of the
+   payload (the official `@x402/*` buyer client format). M2 mock works
+   end-to-end; before real settlement, swap the hand-rolled retry for the
+   official buyer client. Tracked in BLOCKED.md.
 3. **Venice exact model names** — docs list example chat models but the catalog
    is large. `VENICE_MODEL` / `VENICE_IMAGE_MODEL` are env-driven with
    placeholder defaults; confirm exact slugs from the Venice models endpoint
