@@ -1,97 +1,129 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
-import { config } from '@aliran/core';
+import { config, demo, x402IsMock } from '@aliran/core';
 import { MARKET_BRIEF } from './marketData';
 
 /**
  * Aliran x402 seller.
  *
- * M0/MOCK_MODE: a hand-rolled 402 challenge + a header check that mirrors the
- * x402 + ERC-7710 shape (scheme=exact, network=eip155:84532,
- * extra.assetTransferMethod='erc7710'). This lets the buyer flow be exercised
- * end-to-end offline. It genuinely returns 402 and refuses to serve data until
- * a PAYMENT-SIGNATURE header is present.
+ * REAL mode (MOCK_MODE=false): the official MetaMask x402 stack —
+ *   paymentMiddleware (@x402/express) + x402ResourceServer +
+ *   x402ExactEvmErc7710ServerScheme (@metamask/x402) + HTTPFacilitatorClient
+ *   (@x402/core/server) pointed at the Base Sepolia facilitator. The scheme
+ *   enriches the 402 challenge with amount/asset/extra.facilitatorAddresses and
+ *   the facilitator verifies + settles the delegated payment on-chain.
  *
- * M2/real mode: replace `x402Guard` with the official `paymentMiddleware` from
- * @x402/express wired to x402ResourceServer + x402ExactEvmErc7710ServerScheme
- * (see NOTES.md and the seller guide). The route handler below stays identical.
+ * MOCK mode: a hand-rolled 402 that mirrors the same shape (incl. amount +
+ * extra.facilitatorAddresses) so the buyer flow runs fully offline.
+ *
+ * Either way: GET /api/market-brief returns 402 until paid, then the data.
  */
 
-const PRICE_USDC = 0.01;
+const PRICE_USD = demo.x402PriceUsd;
+const PRICE_STR = `$${PRICE_USD.toFixed(2)}`;
 const USDC_DECIMALS = 6;
-const AMOUNT_ATOMIC = String(Math.round(PRICE_USDC * 10 ** USDC_DECIMALS)); // atomic units
-const NETWORK = `eip155:${config.CHAIN_ID}`;
-// Valid placeholder addresses for mock mode (the kit validates these as real
-// addresses when building the delegation caveats). Real mode sets the env vars.
+const AMOUNT_ATOMIC = String(Math.round(PRICE_USD * 10 ** USDC_DECIMALS));
+const NETWORK = `eip155:${config.CHAIN_ID}` as `${string}:${string}`;
 const MOCK_PAY_TO = '0x000000000000000000000000000000000000dead';
 const MOCK_FACILITATOR = '0x00000000000000000000000000000000fac11171';
 const PAY_TO = config.SELLER_PAY_TO_ADDRESS || MOCK_PAY_TO;
-// Facilitator that settles the delegated payment. The buyer's open delegation
-// is restricted (RedeemerEnforcer caveat) to this address.
 const FACILITATOR = config.X402_FACILITATOR_ADDRESS || MOCK_FACILITATOR;
-
-function buildChallenge() {
-  return {
-    x402Version: 1,
-    accepts: [
-      {
-        scheme: 'exact',
-        network: NETWORK,
-        // `amount` is the atomic-unit field the kit's x402 provider reads
-        // (BigInt(requirements.amount)); `price` is the human-readable display.
-        amount: AMOUNT_ATOMIC,
-        price: `$${PRICE_USDC.toFixed(2)}`,
-        asset: config.USDC_ADDRESS,
-        payTo: PAY_TO,
-        resource: '/api/market-brief',
-        mimeType: 'application/json',
-        maxTimeoutSeconds: 300,
-        // assetTransferMethod marks the ERC-7710 path; facilitatorAddresses is
-        // the redeemer allow-list the buyer restricts its delegation to.
-        extra: { assetTransferMethod: 'erc7710', facilitatorAddresses: [FACILITATOR] },
-      },
-    ],
-    error: 'X-PAYMENT header required',
-  };
-}
-
-function x402Guard(req: Request, res: Response, next: NextFunction) {
-  const sig = req.header('PAYMENT-SIGNATURE') || req.header('X-PAYMENT');
-  if (!sig) {
-    const challenge = buildChallenge();
-    const b64 = Buffer.from(JSON.stringify(challenge)).toString('base64');
-    res.setHeader('PAYMENT-REQUIRED', b64);
-    res.status(402).json(challenge);
-    return;
-  }
-  // In real mode, the facilitator verifies + settles here. In mock mode we
-  // accept any non-empty signature and echo a settlement stub so the buyer can
-  // store a receipt.
-  res.setHeader(
-    'PAYMENT-RESPONSE',
-    Buffer.from(
-      JSON.stringify({ settled: true, mock: config.MOCK_MODE, network: NETWORK }),
-    ).toString('base64'),
-  );
-  next();
-}
 
 const app = express();
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'aliran-seller', mock: config.MOCK_MODE, network: NETWORK });
+  res.json({ ok: true, service: 'aliran-seller', mock: config.MOCK_MODE, network: NETWORK, price: PRICE_STR });
 });
 
-app.get('/api/market-brief', x402Guard, (_req, res) => {
-  res.json(MARKET_BRIEF);
-});
+async function installRoutes() {
+  if (!x402IsMock()) {
+    // --- REAL: official @x402 middleware + MetaMask facilitator ---------------
+    const { paymentMiddleware, x402ResourceServer } = await import('@x402/express');
+    const { x402ExactEvmErc7710ServerScheme } = await import('@metamask/x402');
+    const { HTTPFacilitatorClient } = await import('@x402/core/server');
 
-const port = config.SELLER_PORT;
-app.listen(port, () => {
+    if (!config.X402_FACILITATOR_URL) {
+      throw new Error('X402_FACILITATOR_URL required in real mode (see BLOCKED.md).');
+    }
+    const facilitatorClient = new HTTPFacilitatorClient({ url: config.X402_FACILITATOR_URL });
+
+    app.use(
+      paymentMiddleware(
+        {
+          'GET /api/market-brief': {
+            accepts: [
+              {
+                scheme: 'exact',
+                price: PRICE_STR,
+                network: NETWORK,
+                payTo: PAY_TO,
+                extra: { assetTransferMethod: 'erc7710' },
+              },
+            ],
+            description: 'Aliran curated market brief',
+            mimeType: 'application/json',
+          },
+        },
+        new x402ResourceServer(facilitatorClient).register(NETWORK, new x402ExactEvmErc7710ServerScheme()),
+      ),
+    );
+    app.get('/api/market-brief', (_req: Request, res: Response) => res.json(MARKET_BRIEF));
+    // eslint-disable-next-line no-console
+    console.log(`[seller] REAL x402 via facilitator; price=${PRICE_STR}`);
+    return;
+  }
+
+  // --- MOCK: hand-rolled 402 mirroring the official challenge shape -----------
+  function buildChallenge() {
+    return {
+      x402Version: 1,
+      accepts: [
+        {
+          scheme: 'exact',
+          network: NETWORK,
+          amount: AMOUNT_ATOMIC,
+          price: PRICE_STR,
+          asset: config.USDC_ADDRESS,
+          payTo: PAY_TO,
+          resource: '/api/market-brief',
+          mimeType: 'application/json',
+          maxTimeoutSeconds: 300,
+          extra: { assetTransferMethod: 'erc7710', facilitatorAddresses: [FACILITATOR] },
+        },
+      ],
+      error: 'X-PAYMENT header required',
+    };
+  }
+  function x402Guard(req: Request, res: Response, next: NextFunction) {
+    const sig = req.header('PAYMENT-SIGNATURE') || req.header('X-PAYMENT');
+    if (!sig) {
+      const challenge = buildChallenge();
+      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(challenge)).toString('base64'));
+      res.status(402).json(challenge);
+      return;
+    }
+    res.setHeader(
+      'PAYMENT-RESPONSE',
+      Buffer.from(JSON.stringify({ settled: true, mock: true, network: NETWORK })).toString('base64'),
+    );
+    next();
+  }
+  app.get('/api/market-brief', x402Guard, (_req, res) => res.json(MARKET_BRIEF));
   // eslint-disable-next-line no-console
-  console.log(
-    `[seller] listening on http://localhost:${port}  (mock=${config.MOCK_MODE}, network=${NETWORK})`,
-  );
-  // eslint-disable-next-line no-console
-  console.log(`[seller] protected route: GET /api/market-brief  price=$${PRICE_USDC} erc7710`);
-});
+  console.log(`[seller] MOCK x402 stub; price=${PRICE_STR}`);
+}
+
+installRoutes()
+  .then(() => {
+    app.listen(config.SELLER_PORT, () => {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[seller] listening on http://localhost:${config.SELLER_PORT}  (mock=${config.MOCK_MODE}, ${NETWORK})`,
+      );
+    });
+  })
+  .catch((e) => {
+    // eslint-disable-next-line no-console
+    console.error('[seller] failed to start:', e);
+    process.exit(1);
+  });

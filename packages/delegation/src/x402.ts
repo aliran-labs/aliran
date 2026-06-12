@@ -1,6 +1,6 @@
 import { createx402DelegationProvider } from '@metamask/smart-accounts-kit/experimental';
 import { keccak256, toHex, type Hex } from 'viem';
-import { config, store, USDC_DECIMALS, type AgentRole } from '@aliran/core';
+import { config, store, USDC_DECIMALS, x402IsMock, type AgentRole } from '@aliran/core';
 import { smartAccountForRole } from './smartAccount';
 
 /**
@@ -70,6 +70,83 @@ function displayUsdc(accept: X402Accept): number {
 }
 
 /**
+ * Real-mode purchase using the official MetaMask/x402 buyer client (per the
+ * buyer guide): x402Erc7710Client wrapping createx402DelegationProvider, driven
+ * by wrapFetchWithPayment. The facilitator settles the delegated payment.
+ */
+async function buyX402Real(opts: { url: string; buyerRole: AgentRole }): Promise<X402BuyResult> {
+  const { x402Erc7710Client } = await import('@metamask/x402');
+  const { x402Client, x402HTTPClient } = await import('@x402/core/client');
+  const { wrapFetchWithPayment, decodePaymentResponseHeader } = await import('@x402/fetch');
+  const { x402BuyerAccount, ensure7702Buyer } = await import('./x402Buyer');
+
+  // The facilitator requires an EIP-7702-upgraded payer; ensure the buyer EOA is
+  // upgraded, then use the stateless-7702 account as the x402 buyer.
+  const up = await ensure7702Buyer();
+  if (up.upgraded) {
+    store.emit({ agent: opts.buyerRole, action: 'x402 buyer EIP-7702 upgrade', txHash: up.txHash, status: 'success', detail: `delegator-enabled ${up.address.slice(0, 10)}…` });
+  }
+  const buyer = await x402BuyerAccount();
+  const erc7710Client = new x402Erc7710Client({
+    delegationProvider: createx402DelegationProvider({ account: buyer as never }),
+  });
+  const core = new x402Client().register('eip155:*', erc7710Client as never);
+  const fetchWithPayment = wrapFetchWithPayment(fetch, new x402HTTPClient(core));
+
+  try {
+    const res = await fetchWithPayment(opts.url, { method: 'GET' });
+    if (!res.ok) {
+      const error = `x402 purchase failed: HTTP ${res.status}`;
+      store.emit({ agent: opts.buyerRole, action: 'x402 payment rejected', status: 'failed', detail: error });
+      return { ok: false, status: res.status, error };
+    }
+    const data = await res.json().catch(() => null);
+    let settlement: unknown = null;
+    const ph = res.headers.get('PAYMENT-RESPONSE') || res.headers.get('X-PAYMENT-RESPONSE');
+    if (ph) {
+      try {
+        settlement = decodePaymentResponseHeader(ph);
+      } catch {
+        settlement = ph;
+      }
+    }
+    const settleHash =
+      settlement && typeof settlement === 'object'
+        ? ((settlement as Record<string, unknown>).transaction as string | undefined) ??
+          ((settlement as Record<string, unknown>).txHash as string | undefined)
+        : undefined;
+
+    const receipt = store.addReceipt({
+      url: opts.url,
+      challenge: { note: 'settled via MetaMask x402 facilitator' },
+      paymentPayloadHash: settleHash,
+      txHash: settleHash,
+      response: data,
+    });
+    store.addTransaction({
+      kind: 'x402-payment',
+      byRole: opts.buyerRole,
+      amountUsdc: 0,
+      txHash: settleHash,
+      status: 'success',
+      memo: `x402 ${shortUrl(opts.url)}`,
+    });
+    store.emit({
+      agent: opts.buyerRole,
+      action: `x402 purchase complete — ${shortUrl(opts.url)}`,
+      txHash: settleHash,
+      status: 'success',
+      detail: `settled on-chain via facilitator${settleHash ? ` (tx ${settleHash.slice(0, 12)}…)` : ''}`,
+    });
+    return { ok: true, status: 200, data, receiptId: receipt.id, paymentPayloadHash: settleHash };
+  } catch (e) {
+    const error = `x402 real purchase error: ${(e as Error).message}`;
+    store.emit({ agent: opts.buyerRole, action: 'x402 purchase error', status: 'failed', detail: error });
+    return { ok: false, status: 0, error };
+  }
+}
+
+/**
  * Buy an x402-protected resource as `buyerRole` (procurement agent).
  */
 export async function buyX402(opts: {
@@ -81,6 +158,12 @@ export async function buyX402(opts: {
     action: `x402 GET ${shortUrl(opts.url)}`,
     status: 'started',
   });
+
+  // Real x402: drive the purchase with the official MetaMask/x402 client stack.
+  // (x402IsMock() is true under global MOCK_MODE or the x402-only stub toggle.)
+  if (!x402IsMock()) {
+    return buyX402Real(opts);
+  }
 
   // --- 1. initial request: expect 402 --------------------------------------
   let first: Response;

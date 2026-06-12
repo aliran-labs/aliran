@@ -23,6 +23,15 @@ importers:
       '@aliran/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@metamask/x402':
+        specifier: ^0.2.0
+        version: 0.2.0(@x402/core@2.14.0)(@x402/evm@2.14.0(typescript@5.9.3))
+      '@x402/core':
+        specifier: ^2.14.0
+        version: 2.14.0
+      '@x402/express':
+        specifier: ^2.14.0
+        version: 2.14.0(express@4.22.2)(typescript@5.9.3)
       express:
         specifier: ^4.21.2
         version: 4.22.2
@@ -53,7 +62,7 @@ importers:
         version: 18.3.1(react@18.3.1)
       viem:
         specifier: ^2.21.55
-        version: 2.52.2(typescript@5.9.3)
+        version: 2.52.2(typescript@5.9.3)(zod@3.25.76)
     devDependencies:
       '@types/react':
         specifier: ^18.3.18
@@ -84,7 +93,7 @@ importers:
         version: link:../delegation
       viem:
         specifier: ^2.21.55
-        version: 2.52.2(typescript@5.9.3)
+        version: 2.52.2(typescript@5.9.3)(zod@3.25.76)
 
   packages/core:
     dependencies:
@@ -93,7 +102,7 @@ importers:
         version: 16.6.1
       viem:
         specifier: ^2.21.55
-        version: 2.52.2(typescript@5.9.3)
+        version: 2.52.2(typescript@5.9.3)(zod@3.25.76)
 
   packages/delegation:
     dependencies:
@@ -102,10 +111,19 @@ importers:
         version: link:../core
       '@metamask/smart-accounts-kit':
         specifier: ^1.6.0
-        version: 1.6.0(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3))
+        version: 1.6.0(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@3.25.76))(zod@3.25.76)
+      '@metamask/x402':
+        specifier: ^0.2.0
+        version: 0.2.0(@x402/core@2.14.0)(@x402/evm@2.14.0(typescript@5.9.3))
+      '@x402/core':
+        specifier: ^2.14.0
+        version: 2.14.0
+      '@x402/fetch':
+        specifier: ^2.14.0
+        version: 2.14.0
       viem:
         specifier: ^2.21.55
-        version: 2.52.2(typescript@5.9.3)
+        version: 2.52.2(typescript@5.9.3)(zod@3.25.76)
 
 packages:
 
@@ -335,6 +353,13 @@ packages:
     resolution: {integrity: sha512-0nF2CWjWQr/m0Y2t2lJnBTU1/CZPPTvKvcESLplyWe/tyeb8zFOi/FeneDmaFnML6LYRIGZU6f+xR0jKAIUZfw==}
     engines: {node: ^18.18 || ^20.14 || >=22}
 
+  '@metamask/x402@0.2.0':
+    resolution: {integrity: sha512-QIS9QOi3VtrqYhkmjd8Gpdn/dNOVdnGgjqP2CAlspPkvC8B2fyxEjJzxxrKPHKCPqLuNCWieky7VzrucFnTjjQ==}
+    engines: {node: ^18.18 || >=20}
+    peerDependencies:
+      '@x402/core': ^2.12.0
+      '@x402/evm': ^2.12.0
+
   '@next/env@14.2.35':
     resolution: {integrity: sha512-DuhvCtj4t9Gwrx80dmz2F4t/zKQ4ktN8WrMwOuVzkJfBilwAwGr6v16M5eI8yCuZ63H9TTuEU09Iu2HqkzFPVQ==}
 
@@ -445,6 +470,20 @@ packages:
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
 
+  '@signinwithethereum/siwe-parser@4.2.0':
+    resolution: {integrity: sha512-e3edh8XpZrEjbzVYc0BZ4ySFOa8RKTZOQTafSf1E6ejCB5XcBH93jEpYmjzry1EEocgMNq4KlB3YunsFNCXakQ==}
+
+  '@signinwithethereum/siwe@4.2.0':
+    resolution: {integrity: sha512-6W+oyKgMFUZRJI4o9P9mTMzrokkXfu3tq1/CfOJj9QrMqyPqujJqv1xnxUAqDQwWVyCA8TMg0Fxk/+gXrDg2Nw==}
+    peerDependencies:
+      ethers: ^5.7.0 || ^6.13.0
+      viem: ^2.7.0
+    peerDependenciesMeta:
+      ethers:
+        optional: true
+      viem:
+        optional: true
+
   '@swc/counter@0.1.3':
     resolution: {integrity: sha512-e2BR4lsJkkRlKZ/qCHPw9ZaSxc0MVUd7gtbtaB7aMvHeJVYe8sOB8DBZkP2DtISHGSku9sCK6T6cnY0CtXrOCQ==}
 
@@ -501,6 +540,27 @@ packages:
   '@types/serve-static@2.2.0':
     resolution: {integrity: sha512-8mam4H1NHLtu7nmtalF7eyBH14QyOASmcxHhSfEoRyr0nP/YdoesEtU+uSRvMe96TW/HPTtkoKqQLl53N7UXMQ==}
 
+  '@x402/core@2.14.0':
+    resolution: {integrity: sha512-+xTM6hfGduYvFcQ7QwKvCwommL6+zqzqmr5IuPojbt+RZjo4QUjSkHW+arMtPoIKRLxWAI+e6P4UJMMblwG+Dw==}
+
+  '@x402/evm@2.14.0':
+    resolution: {integrity: sha512-Qrm0+hN1gMK1vrX4vW4sdcx5txYTx8J2uDNulcNoIdtz15kTU5hjNUyZaCpI3i6x0MXnUBGfyar9Ut9uoAoPMw==}
+
+  '@x402/express@2.14.0':
+    resolution: {integrity: sha512-dkM4A1EanDciS2iJwxl5B/Qsz+ENWmL5O8jt5i+hRc8w+rQ6Loj04C4cIN3RCAIwmD91NTCmivGsIJ+4WrdEwQ==}
+    peerDependencies:
+      '@x402/paywall': ^2.14.0
+      express: ^4.0.0 || ^5.0.0
+    peerDependenciesMeta:
+      '@x402/paywall':
+        optional: true
+
+  '@x402/extensions@2.14.0':
+    resolution: {integrity: sha512-2zu8hxf0j4BRvSWNPRKziQLdubnQpzzmU9xopKK5ZyXa434hvmGEUPMBOA2NIYvaTkyZjQH3JZ3GPDyzjBvFqA==}
+
+  '@x402/fetch@2.14.0':
+    resolution: {integrity: sha512-GSCnxdrbmtuKeki2MTy2vnJq4e6PrA7XfF1yX23VxKvASIYaXUioW1HtRzNYU7imeMe13YcwefRH1jO7Ei7Tyg==}
+
   abitype@1.2.3:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
     peerDependencies:
@@ -527,12 +587,18 @@ packages:
     resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
     engines: {node: '>= 0.6'}
 
+  ajv@8.20.0:
+    resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
+
   any-promise@1.3.0:
     resolution: {integrity: sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A==}
 
   anymatch@3.1.3:
     resolution: {integrity: sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==}
     engines: {node: '>= 8'}
+
+  apg-js@4.4.0:
+    resolution: {integrity: sha512-fefmXFknJmtgtNEXfPwZKYkMFX4Fyeyz+fNF6JWp87biGOPslJbCBVU158zvKRZfHBKnJDy8CMM40oLFGkXT8Q==}
 
   arg@5.0.2:
     resolution: {integrity: sha512-PYjyFOLKQ9y57JvQ6QLo8dAgNqswh8M1RMJYdQduT6xbWSgK36P/Z/v+p888pM69jMMfS8Xd8F6I1kQ/I9HUGg==}
@@ -718,9 +784,15 @@ packages:
     resolution: {integrity: sha512-IuL+Elrou2ZvCFHs18/CIzy2Nzvo25nZ1/D2eIZlz7c+QUayAcYoiM2BthCjs+EBHVpjYjcuLDAiCWgeIX3X1Q==}
     engines: {node: '>= 0.10.0'}
 
+  fast-deep-equal@3.1.3:
+    resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
+
   fast-glob@3.3.3:
     resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
     engines: {node: '>=8.6.0'}
+
+  fast-uri@3.1.2:
+    resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
 
   fastq@1.20.1:
     resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
@@ -836,8 +908,14 @@ packages:
     resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
     hasBin: true
 
+  jose@5.10.0:
+    resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
+
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
+
+  json-schema-traverse@1.0.0:
+    resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
 
   lilconfig@3.1.3:
     resolution: {integrity: sha512-/vlFKAoH5Cgt3Ie+JLhRbwOsCQePABiU3tJ1egGvyQ+33R/vcwM2Zl2QR/LzjsBeItPt3oSVXapn+m4nQDvpzw==}
@@ -1093,6 +1171,10 @@ packages:
     resolution: {integrity: sha512-hOS089on8RduqdbhvQ5Z37A0ESjsqz6qnRcffsMU3495FuTdqSm+7bhJ29JvIOsBDEEnan5DPu9t3To9VRlMzA==}
     engines: {node: '>=8.10.0'}
 
+  require-from-string@2.0.2:
+    resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
+    engines: {node: '>=0.10.0'}
+
   resolve@1.22.12:
     resolution: {integrity: sha512-TyeJ1zif53BPfHootBGwPRYT1RUt6oGWsaQr8UyZW/eAm9bKoijtvruSDEmZHm92CwS9nj7/fWttqPCgzep8CA==}
     engines: {node: '>= 0.4'}
@@ -1215,6 +1297,9 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
+  tweetnacl@1.0.3:
+    resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
+
   type-is@1.6.18:
     resolution: {integrity: sha512-TkRKr9sUTxEH8MdfuCSP7VizJyzRNMjj2J2do2Jr3Kym598JVdEksuzPQCnlFPW4ky9Q+iA+ma9BGm06XQBy8g==}
     engines: {node: '>= 0.6'}
@@ -1272,6 +1357,9 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
 snapshots:
 
@@ -1412,7 +1500,7 @@ snapshots:
 
   '@metamask/delegation-deployments@1.4.0': {}
 
-  '@metamask/smart-accounts-kit@1.6.0(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3))':
+  '@metamask/smart-accounts-kit@1.6.0(typescript@5.9.3)(viem@2.52.2(typescript@5.9.3)(zod@3.25.76))(zod@3.25.76)':
     dependencies:
       '@metamask/7715-permission-types': 0.7.1
       '@metamask/delegation-abis': 1.1.0
@@ -1420,8 +1508,8 @@ snapshots:
       '@metamask/delegation-deployments': 1.4.0
       '@metamask/utils': 11.11.0
       openapi-fetch: 0.13.8
-      ox: 0.8.1(typescript@5.9.3)
-      viem: 2.52.2(typescript@5.9.3)
+      ox: 0.8.1(typescript@5.9.3)(zod@3.25.76)
+      viem: 2.52.2(typescript@5.9.3)(zod@3.25.76)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -1442,6 +1530,14 @@ snapshots:
       pony-cause: 2.1.11
       semver: 7.8.4
       uuid: 9.0.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@metamask/x402@0.2.0(@x402/core@2.14.0)(@x402/evm@2.14.0(typescript@5.9.3))':
+    dependencies:
+      '@metamask/utils': 11.11.0
+      '@x402/core': 2.14.0
+      '@x402/evm': 2.14.0(typescript@5.9.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -1530,6 +1626,17 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
+  '@signinwithethereum/siwe-parser@4.2.0':
+    dependencies:
+      '@noble/hashes': 1.8.0
+      apg-js: 4.4.0
+
+  '@signinwithethereum/siwe@4.2.0(viem@2.52.2(typescript@5.9.3)(zod@3.25.76))':
+    dependencies:
+      '@signinwithethereum/siwe-parser': 4.2.0
+    optionalDependencies:
+      viem: 2.52.2(typescript@5.9.3)(zod@3.25.76)
+
   '@swc/counter@0.1.3': {}
 
   '@swc/helpers@0.5.5':
@@ -1597,18 +1704,73 @@ snapshots:
       '@types/http-errors': 2.0.5
       '@types/node': 22.19.21
 
-  abitype@1.2.3(typescript@5.9.3):
-    optionalDependencies:
-      typescript: 5.9.3
+  '@x402/core@2.14.0':
+    dependencies:
+      zod: 3.25.76
 
-  abitype@1.2.4(typescript@5.9.3):
+  '@x402/evm@2.14.0(typescript@5.9.3)':
+    dependencies:
+      '@x402/core': 2.14.0
+      viem: 2.52.2(typescript@5.9.3)(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+
+  '@x402/express@2.14.0(express@4.22.2)(typescript@5.9.3)':
+    dependencies:
+      '@x402/core': 2.14.0
+      '@x402/extensions': 2.14.0(typescript@5.9.3)
+      express: 4.22.2
+    transitivePeerDependencies:
+      - bufferutil
+      - ethers
+      - typescript
+      - utf-8-validate
+
+  '@x402/extensions@2.14.0(typescript@5.9.3)':
+    dependencies:
+      '@noble/curves': 1.9.7
+      '@scure/base': 1.2.6
+      '@signinwithethereum/siwe': 4.2.0(viem@2.52.2(typescript@5.9.3)(zod@3.25.76))
+      '@x402/core': 2.14.0
+      ajv: 8.20.0
+      jose: 5.10.0
+      tweetnacl: 1.0.3
+      viem: 2.52.2(typescript@5.9.3)(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - bufferutil
+      - ethers
+      - typescript
+      - utf-8-validate
+
+  '@x402/fetch@2.14.0':
+    dependencies:
+      '@x402/core': 2.14.0
+
+  abitype@1.2.3(typescript@5.9.3)(zod@3.25.76):
     optionalDependencies:
       typescript: 5.9.3
+      zod: 3.25.76
+
+  abitype@1.2.4(typescript@5.9.3)(zod@3.25.76):
+    optionalDependencies:
+      typescript: 5.9.3
+      zod: 3.25.76
 
   accepts@1.3.8:
     dependencies:
       mime-types: 2.1.35
       negotiator: 0.6.3
+
+  ajv@8.20.0:
+    dependencies:
+      fast-deep-equal: 3.1.3
+      fast-uri: 3.1.2
+      json-schema-traverse: 1.0.0
+      require-from-string: 2.0.2
 
   any-promise@1.3.0: {}
 
@@ -1616,6 +1778,8 @@ snapshots:
     dependencies:
       normalize-path: 3.0.0
       picomatch: 2.3.2
+
+  apg-js@4.4.0: {}
 
   arg@5.0.2: {}
 
@@ -1833,6 +1997,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  fast-deep-equal@3.1.3: {}
+
   fast-glob@3.3.3:
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -1840,6 +2006,8 @@ snapshots:
       glob-parent: 5.1.2
       merge2: 1.4.1
       micromatch: 4.0.8
+
+  fast-uri@3.1.2: {}
 
   fastq@1.20.1:
     dependencies:
@@ -1950,7 +2118,11 @@ snapshots:
 
   jiti@1.21.7: {}
 
+  jose@5.10.0: {}
+
   js-tokens@4.0.0: {}
+
+  json-schema-traverse@1.0.0: {}
 
   lilconfig@3.1.3: {}
 
@@ -2046,7 +2218,7 @@ snapshots:
 
   openapi-typescript-helpers@0.0.15: {}
 
-  ox@0.14.29(typescript@5.9.3):
+  ox@0.14.29(typescript@5.9.3)(zod@3.25.76):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -2054,14 +2226,14 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.4(typescript@5.9.3)
+      abitype: 1.2.4(typescript@5.9.3)(zod@3.25.76)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3
     transitivePeerDependencies:
       - zod
 
-  ox@0.8.1(typescript@5.9.3):
+  ox@0.8.1(typescript@5.9.3)(zod@3.25.76):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -2069,7 +2241,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.4(typescript@5.9.3)
+      abitype: 1.2.4(typescript@5.9.3)(zod@3.25.76)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3
@@ -2175,6 +2347,8 @@ snapshots:
   readdirp@3.6.0:
     dependencies:
       picomatch: 2.3.2
+
+  require-from-string@2.0.2: {}
 
   resolve@1.22.12:
     dependencies:
@@ -2336,6 +2510,8 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
+  tweetnacl@1.0.3: {}
+
   type-is@1.6.18:
     dependencies:
       media-typer: 0.3.0
@@ -2361,15 +2537,15 @@ snapshots:
 
   vary@1.1.2: {}
 
-  viem@2.52.2(typescript@5.9.3):
+  viem@2.52.2(typescript@5.9.3)(zod@3.25.76):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)
+      abitype: 1.2.3(typescript@5.9.3)(zod@3.25.76)
       isows: 1.0.7(ws@8.20.1)
-      ox: 0.14.29(typescript@5.9.3)
+      ox: 0.14.29(typescript@5.9.3)(zod@3.25.76)
       ws: 8.20.1
     optionalDependencies:
       typescript: 5.9.3
@@ -2379,3 +2555,5 @@ snapshots:
       - zod
 
   ws@8.20.1: {}
+
+  zod@3.25.76: {}
