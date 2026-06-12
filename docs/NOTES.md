@@ -90,10 +90,33 @@ first real-mode run** — flagged in BLOCKED.md).
    canonical encoded chain, which IS the payment payload.
 
    Our seller now advertises `accepts[0].amount` + `extra.facilitatorAddresses`
-   to match. **Remaining real-mode gap (BLOCKED.md):** only the *transport* —
-   `wrapFetchWithPayment` + `@metamask/x402` + `@x402/core` + `@x402/fetch` (not
-   yet installed). The delegation construction + payload are already the official
-   ones; settlement wiring is the last swap.
+   to match. Transport later wired with the official client (`wrapFetchWithPayment`
+   + `@metamask/x402` + `@x402/core` + `@x402/fetch`, all installed).
+
+   ### x402 real settlement — ROOT CAUSE (confirmed 2026-06-12)
+
+   Posting our payment to the Base Sepolia facilitator `/verify` returns:
+   ```json
+   { "isValid": false,
+     "invalidReason": "invalid_exact_evm_erc7710_account_not_delegated",
+     "invalidMessage": "delegator EOA must complete an EIP-7702 upgrade
+       delegating to EIP7702StatelessDeleGator before ERC-7710 verify or settle",
+     "payer": "0xede5…d5e8" }
+   ```
+   **The facilitator requires the payer to be an EIP-7702-upgraded EOA** whose
+   code points to MetaMask's `EIP7702StatelessDeleGator` — NOT a deployed Hybrid
+   smart account (which is what the buyer guide example shows; that example
+   targets Base mainnet/a different facilitator). The facilitator `/supported`
+   advertises `assetTransferMethods: [eip3009, permit2, erc7710]` and confirms
+   `permissionContext` must be 0x-hex (we send hex — OK). Our delegation shape,
+   facilitator restriction, and payload are all accepted; the ONLY gap is the
+   payer **account type**.
+
+   **Fix (implemented):** x402 purchases use a dedicated buyer account upgraded
+   via EIP-7702 to `Implementation.Stateless7702`. We sign a 7702 authorization
+   and submit the type-4 tx ourselves via viem (`authorizationList`) — no
+   third-party relayer. See `scripts/x402-upgrade-buyer.ts` and
+   `packages/delegation/src/x402.ts` (`x402BuyerAccount` / `ensure7702Buyer`).
 3. **Venice exact model names** — docs list example chat models but the catalog
    is large. `VENICE_MODEL` / `VENICE_IMAGE_MODEL` are env-driven with
    placeholder defaults; confirm exact slugs from the Venice models endpoint

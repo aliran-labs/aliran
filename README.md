@@ -52,7 +52,7 @@ scripts/
 ```
 
 **Chain:** Base Sepolia (`84532`) for everything — it's the only testnet where delegation +
-redelegation + 7710 redemption **and** x402-over-ERC-7710 all work (see `NOTES.md`).
+redelegation + 7710 redemption **and** x402-over-ERC-7710 all work (see `docs/NOTES.md`).
 
 **Agents never hold keys.** Every tool call routes into `packages/delegation`, which holds the
 signing. Caps are enforced **on-chain** by the kit's caveats; the UI mirrors spend locally.
@@ -85,22 +85,40 @@ This repo runs **fully offline** with `MOCK_MODE=true`:
 - Chain calls are **constructed and signed locally** (real `redeemDelegations` calldata is
   built — ~4.8 KB), then **logged instead of broadcast**. No RPC, bundler, or funds needed.
 
-To go live, fill `.env` and set `MOCK_MODE=false`. **`BLOCKED.md`** maps every pending env var
+To go live, fill `.env` and set `MOCK_MODE=false`. **`docs/BLOCKED.md`** maps every pending env var
 to the exact unblock command — switching to real mode is a ~15-minute checklist, not a refactor.
+
+### Real-mode setup (Base Sepolia)
+
+```bash
+pnpm setup:demo          # generate agent keys (written to .env), seed task board
+pnpm phase1              # print smart-account addresses to fund (owner: USDC+ETH; agents: ETH)
+# …fund the printed addresses…
+pnpm deploy:accounts     # deploy owner/cfo/payroll/procurement smart accounts
+pnpm x402:setup          # provision the EIP-7702 x402 buyer (the facilitator requires a
+                         # 7702 payer): generates X402_BUYER_PK, funds from owner, upgrades
+pnpm m1 && pnpm m2 && pnpm m3   # full chain, real x402 settlement, real-Venice agent run
+```
+
+This whole flow was run end-to-end on Base Sepolia — every tx hash is in **`docs/TESTLOG.md`**
+(payroll payouts, x402 facilitator settlement, EIP-7702 upgrade, cap-exceed revert, revoke).
+`X402_MODE=mock` is kept as an emergency fallback if the facilitator is unavailable.
 
 ---
 
 ## Track qualification
 
-Aliran is designed to satisfy four prize tracks simultaneously. Each requirement maps to code
-and to a timestamp in `DEMO-SCRIPT.md`.
+Aliran is designed to satisfy four core prize tracks simultaneously — plus the 1Shot
+permissionless-relayer stretch track, executed live on Base mainnet. Each requirement maps to code
+and to a timestamp in `docs/DEMO-SCRIPT.md`.
 
 | Track | Requirement | Where it's satisfied |
 |---|---|---|
 | **Best Agent** | Agents act on the user's behalf via the Smart Accounts Kit | Whole main flow. `packages/agents/src/orchestrator.ts` `runMonth()`; smart accounts in [`packages/delegation/src/smartAccount.ts`](packages/delegation/src/smartAccount.ts). Demo §3–6. |
 | **Best A2A coordination** | Must use **redelegation** | CFO→worker redelegation chain IS the product. [`createRedelegation`](packages/delegation/src/delegation.ts) (narrow-only) + [`cfoExecute`](packages/agents/src/agents.ts). Tree visible in UI. Demo §3. |
-| **Best x402 + ERC-7710** | Pay x402-protected APIs via ERC-7710 | Seller [`apps/seller/src/server.ts`](apps/seller/src/server.ts) returns real 402; buyer [`buyX402`](packages/delegation/src/x402.ts) signs a `createOpenDelegation` payment and retries. Receipt panel in UI. Demo §5. |
+| **Best x402 + ERC-7710** | Pay x402-protected APIs via ERC-7710 | Seller [`apps/seller/src/server.ts`](apps/seller/src/server.ts) uses the official `@x402/express` middleware + MetaMask facilitator; buyer [`buyX402`](packages/delegation/src/x402.ts) pays via `createx402DelegationProvider` + `wrapFetchWithPayment` from an EIP-7702 account ([`x402Buyer.ts`](packages/delegation/src/x402Buyer.ts)). **Real facilitator settlement on-chain** (tx in `docs/TESTLOG.md`). Receipt panel in UI. Demo §5. |
 | **Best use of Venice** | Venice produces meaningful AI output in the main flow | All four agents reason via Venice ([`packages/agents/src/venice.ts`](packages/agents/src/venice.ts)): CFO plan, payroll eligibility judgement, procurement synthesis, creative report **+ image** (two Venice endpoints). Demo §3,4,5,6. |
+| **1Shot Permissionless Relayer** (stretch) | Relay 7710 txs through 1Shot's mainnet relayer paying gas in stablecoins **+** EIP-7702 EOA→smart-account upgrade via the relayer | [`scripts/m6-relayer-demo.ts`](scripts/m6-relayer-demo.ts) + [`packages/delegation/src/relayer.ts`](packages/delegation/src/relayer.ts). **Executed on Base mainnet** from a zero-ETH account: relayed ERC-7710 USDC transfers, gas paid in USDC, EIP-7702 upgrade bundled into redemption #1. **Webhook-driven status** via [`scripts/m6-webhook-receiver.ts`](scripts/m6-webhook-receiver.ts) (cloudflared tunnel; Ed25519-verified events). Tx links in `docs/TESTLOG.md` / `docs/MAINNET-DEMO.md`. Isolated behind `RELAYER=1shot` + `pnpm m6`. |
 
 The cap-exceed revert (Demo §7) is the proof that on-chain caveats — not app logic — enforce
 the budget: [`redeemTransfer`](packages/delegation/src/delegation.ts) builds the over-cap
@@ -110,13 +128,8 @@ the budget: [`redeemTransfer`](packages/delegation/src/delegation.ts) builds the
 
 ## Notes & honesty
 
-- `NOTES.md` — chain decision, verified kit API facts, and doc discrepancies (e.g. the x402
+- `docs/NOTES.md` — chain decision, verified kit API facts, and doc discrepancies (e.g. the x402
   buyer guide page 404'd; `createOpenDelegation` was verified directly against the installed
   package; `BUNDLER_URL` was added because 7710 redemption needs an ERC-4337 bundler).
-- `BLOCKED.md` — every credential that gates real mode + its unblock command.
+- `docs/BLOCKED.md` — every credential that gates real mode + its unblock command.
 - Demo-grade by design: no auth, no multi-tenancy, JSON-file persistence.
-
-## Stretch (not on the default path)
-
-1Shot permissionless relayer (gas in stablecoins via EIP-7710 + EIP-7702 upgrades) is isolated
-behind a `RELAYER=1shot` flag so the core demo never depends on it. See `NOTES.md`.

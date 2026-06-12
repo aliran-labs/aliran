@@ -1,8 +1,14 @@
-# BLOCKED — pending credentials → exact unblock command
+# BLOCKED — ✅ ALL CLOSED (2026-06-12)
 
-Everything below runs in **MOCK_MODE today**. This file maps each missing env
-var to (a) what it unblocks and (b) the exact command to run once you have it.
-Switching to real mode is a ~15-minute checklist, not a refactor.
+> **Status: nothing is blocked.** Every credential below was filled and the full
+> flow ran for real on Base Sepolia (M1/M2/M3 + UI) and Base mainnet (M6) — see
+> `docs/TESTLOG.md` for tx hashes. This file is kept as the historical unblock
+> reference (e.g. for a fresh clone that starts in `MOCK_MODE`).
+
+The repo still ships **MOCK_MODE-first** for a fresh clone (no credentials
+needed to explore). The table maps each env var to what it unblocks; all were
+provided and verified this session. Switching a fresh clone to real mode is the
+~15-minute checklist below.
 
 ## The one-time switch to real mode
 
@@ -14,7 +20,7 @@ Switching to real mode is a ~15-minute checklist, not a refactor.
 6. Re-run the milestone scripts (`pnpm m1`, `pnpm m2`, `pnpm m3`) — they now
    broadcast for real. The dashboard (`pnpm dev`) picks up real mode from `.env`.
 
-## Pending env vars
+## Env vars (all ✅ provided & verified this session)
 
 | Env var | Unblocks | How to get it / command |
 |---|---|---|
@@ -32,20 +38,23 @@ Switching to real mode is a ~15-minute checklist, not a refactor.
 
 ## Code-side follow-ups gated on the above (tracked so they aren't forgotten)
 
-- **M2 (buyer — DONE):** reconciled with the official guide
-  (`guides/x402/buyer/delegations`). The buyer now uses
-  `createx402DelegationProvider` (from the installed kit's `/experimental`),
-  which restricts the open delegation to `accepts[0].extra.facilitatorAddresses`
-  via a RedeemerEnforcer caveat and returns the canonical `permissionContext`.
-  **Real-mode swap remaining:** install + wire the transport client —
-  `pnpm --filter @aliran/delegation add @metamask/x402 @x402/core @x402/fetch`,
-  then replace the explicit fetch/retry in `x402.ts` with
-  `wrapFetchWithPayment(fetch, new x402HTTPClient(new x402Client().register('eip155:*', new x402Erc7710Client({ delegationProvider }))))`.
-- **M2 (seller):** replace the hand-rolled `x402Guard` with `@x402/express`
-  `paymentMiddleware` + `x402ResourceServer` + `x402ExactEvmErc7710ServerScheme`
-  + `HTTPFacilitatorClient`, and set `X402_FACILITATOR_ADDRESS` to the real
-  facilitator. Until then the seller stub emits a matching 402 (incl.
-  `amount` + `extra.facilitatorAddresses`) and echoes a settlement stub.
-- **M3:** confirm Venice tool-call response shape (OpenAI-compatible) against a
-  live key; the agent runtime already targets the OpenAI tool-call schema.
-- **USDC verify:** confirm `USDC_ADDRESS` + decimals (6) on Base Sepolia.
+- **M2 x402 real settlement — DONE (2026-06-12).** Buyer uses the official
+  `createx402DelegationProvider` + `wrapFetchWithPayment`; seller uses the
+  official `@x402/express` `paymentMiddleware` + `x402ResourceServer` +
+  `x402ExactEvmErc7710ServerScheme` + `HTTPFacilitatorClient` against the Base
+  Sepolia facilitator. The facilitator requires an **EIP-7702-upgraded payer**
+  (not a Hybrid account) — provisioned via `pnpm x402:setup` (`X402_BUYER_PK`,
+  funded from owner, self-sponsored type-4 upgrade). Verified real settlement
+  on-chain (`pnpm m2` + UI run-month). `X402_MODE=real` is the default;
+  `X402_MODE=mock` is the emergency fallback. See TESTLOG.md / NOTES.md #2.
+- **M3 — DONE.** Venice tool-call shape confirmed against the live key
+  (`zai-org-glm-4.6`); CFO plan + payroll judgement + procurement synthesis +
+  creative report all produced by real Venice. See `docs/TESTLOG.md` M3.
+- **USDC verify — DONE.** `USDC_ADDRESS` `0x036C…F7e` confirmed `symbol=USDC`,
+  `decimals=6` on Base Sepolia (Phase 0).
+- **M6 1Shot relayer — DONE (mainnet).** Executed on Base mainnet 8453 from a
+  zero-ETH account: 7710 relayed + EIP-7702 upgrade via the relayer, gas in
+  USDC, Ed25519 webhook-driven status. Isolated behind `RELAYER=1shot` +
+  `pnpm m6`. See `docs/TESTLOG.md` M6 + `docs/MAINNET-DEMO.md`.
+
+**Nothing remains open.**
