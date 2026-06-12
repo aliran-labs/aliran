@@ -55,6 +55,6 @@ provided and verified this session. Switching a fresh clone to real mode is the
 - **M6 1Shot relayer — DONE (mainnet).** Executed on Base mainnet 8453 from a
   zero-ETH account: 7710 relayed + EIP-7702 upgrade via the relayer, gas in
   USDC, Ed25519 webhook-driven status. Isolated behind `RELAYER=1shot` +
-  `pnpm m6`. See `docs/TESTLOG.md` M6 + `docs/MAINNET-DEMO.md`.
+  `pnpm m6`. See `docs/TESTLOG.md` M6.
 
 **Nothing remains open.**

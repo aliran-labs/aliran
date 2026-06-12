@@ -110,7 +110,7 @@ This whole flow was run end-to-end on Base Sepolia — every tx hash is in **`do
 
 Aliran is designed to satisfy four core prize tracks simultaneously — plus the 1Shot
 permissionless-relayer stretch track, executed live on Base mainnet. Each requirement maps to code
-and to a timestamp in `docs/DEMO-SCRIPT.md`.
+and to a step in the demo flow above.
 
 | Track | Requirement | Where it's satisfied |
 |---|---|---|
@@ -118,7 +118,7 @@ and to a timestamp in `docs/DEMO-SCRIPT.md`.
 | **Best A2A coordination** | Must use **redelegation** | CFO→worker redelegation chain IS the product. [`createRedelegation`](packages/delegation/src/delegation.ts) (narrow-only) + [`cfoExecute`](packages/agents/src/agents.ts). Tree visible in UI. Demo §3. |
 | **Best x402 + ERC-7710** | Pay x402-protected APIs via ERC-7710 | Seller [`apps/seller/src/server.ts`](apps/seller/src/server.ts) uses the official `@x402/express` middleware + MetaMask facilitator; buyer [`buyX402`](packages/delegation/src/x402.ts) pays via `createx402DelegationProvider` + `wrapFetchWithPayment` from an EIP-7702 account ([`x402Buyer.ts`](packages/delegation/src/x402Buyer.ts)). **Real facilitator settlement on-chain** (tx in `docs/TESTLOG.md`). Receipt panel in UI. Demo §5. |
 | **Best use of Venice** | Venice produces meaningful AI output in the main flow | All four agents reason via Venice ([`packages/agents/src/venice.ts`](packages/agents/src/venice.ts)): CFO plan, payroll eligibility judgement, procurement synthesis, creative report **+ image** (two Venice endpoints). Demo §3,4,5,6. |
-| **1Shot Permissionless Relayer** (stretch) | Relay 7710 txs through 1Shot's mainnet relayer paying gas in stablecoins **+** EIP-7702 EOA→smart-account upgrade via the relayer | [`scripts/m6-relayer-demo.ts`](scripts/m6-relayer-demo.ts) + [`packages/delegation/src/relayer.ts`](packages/delegation/src/relayer.ts). **Executed on Base mainnet** from a zero-ETH account: relayed ERC-7710 USDC transfers, gas paid in USDC, EIP-7702 upgrade bundled into redemption #1. **Webhook-driven status** via [`scripts/m6-webhook-receiver.ts`](scripts/m6-webhook-receiver.ts) (cloudflared tunnel; Ed25519-verified events). Tx links in `docs/TESTLOG.md` / `docs/MAINNET-DEMO.md`. Isolated behind `RELAYER=1shot` + `pnpm m6`. |
+| **1Shot Permissionless Relayer** (stretch) | Relay 7710 txs through 1Shot's mainnet relayer paying gas in stablecoins **+** EIP-7702 EOA→smart-account upgrade via the relayer | [`scripts/m6-relayer-demo.ts`](scripts/m6-relayer-demo.ts) + [`packages/delegation/src/relayer.ts`](packages/delegation/src/relayer.ts). **Executed on Base mainnet** from a zero-ETH account: relayed ERC-7710 USDC transfers, gas paid in USDC, EIP-7702 upgrade bundled into redemption #1. **Webhook-driven status** via [`scripts/m6-webhook-receiver.ts`](scripts/m6-webhook-receiver.ts) (cloudflared tunnel; Ed25519-verified events). Tx links in `docs/TESTLOG.md`. Isolated behind `RELAYER=1shot` + `pnpm m6`. |
 
 The cap-exceed revert (Demo §7) is the proof that on-chain caveats — not app logic — enforce
 the budget: [`redeemTransfer`](packages/delegation/src/delegation.ts) builds the over-cap

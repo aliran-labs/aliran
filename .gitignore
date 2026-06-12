@@ -12,3 +12,8 @@ aliran.db-*
 
 # runtime db (regenerate via: pnpm setup:demo)
 aliran.db.json
+
+# local-only docs (kept on disk for recording, not pushed)
+MANUAL-TESTING.md
+docs/DEMO-SCRIPT.md
+docs/MAINNET-DEMO.md
