@@ -68,10 +68,10 @@ async function main() {
 
   console.log('\n── Procurement (x402) ──');
   console.log(`   bought: ${result.procurement.ok ? 'yes' : 'no'}  receipt=${result.procurement.receiptId?.slice(0, 8) ?? '-'}`);
-  if (result.procurement.synthesis) console.log(`   synthesis: ${result.procurement.synthesis.split('\n')[0]}`);
+  if (result.procurement.synthesis) console.log(`   synthesis: ${result.procurement.synthesis.trim().split('\n')[0].slice(0, 90)}`);
 
   console.log('\n── Creative report ──');
-  console.log(`   ${result.report.report.split('\n')[0]}  (image=${result.report.imageUrl ?? 'none'})`);
+  console.log(`   ${(result.report.report.trim().split('\n')[0] || '(report)').slice(0, 70)}  (image=${result.report.imageUrl ?? 'none'})`);
 
   console.log('\n── Demo step 7: deliberate overspend ──');
   const over = await attemptOverspend(result.ctx);

@@ -35,6 +35,9 @@ export const config = {
   AGENT_PAYROLL_PK: str(process.env.AGENT_PAYROLL_PK),
   AGENT_PROCUREMENT_PK: str(process.env.AGENT_PROCUREMENT_PK),
   AGENT_CREATIVE_PK: str(process.env.AGENT_CREATIVE_PK),
+  // Dedicated x402 buyer EOA, upgraded via EIP-7702 to the stateless delegator
+  // (the facilitator requires a 7702 payer, not a Hybrid smart account).
+  X402_BUYER_PK: str(process.env.X402_BUYER_PK),
   CONTRIBUTOR_ADDRESSES: str(process.env.CONTRIBUTOR_ADDRESSES)
     .split(',')
     .map((s) => s.trim())
@@ -52,14 +55,53 @@ export const config = {
   // Facilitator address(es) the buyer's open delegation is restricted to
   // (RedeemerEnforcer caveat). Comma-separated; first is advertised by the seller.
   X402_FACILITATOR_ADDRESS: str(process.env.X402_FACILITATOR_ADDRESS),
+  // x402 transport: 'real' uses the official @x402 client + MetaMask facilitator;
+  // 'mock' uses the local stub (works offline / when the facilitator rejects the
+  // account). Independent of MOCK_MODE so chain+Venice can be real while x402 is
+  // stubbed. Defaults to 'real'.
+  X402_MODE: (str(process.env.X402_MODE, 'real') as 'real' | 'mock'),
 
+  // --- M6: 1Shot permissionless relayer (Base MAINNET 8453) ----------------
+  // Stretch track, fully isolated: only `pnpm m6` reads these. RELAYER=1shot
+  // gates the feature. NEVER mixed with the Sepolia (MOCK/real) demo path.
   RELAYER: str(process.env.RELAYER),
+  MAINNET_CHAIN_ID: Number(str(process.env.MAINNET_CHAIN_ID, '8453')),
+  MAINNET_RPC_URL: str(process.env.MAINNET_RPC_URL, 'https://mainnet.base.org'),
+  MAINNET_OWNER_PK: str(process.env.MAINNET_OWNER_PK),
+  MAINNET_USDC: str(process.env.MAINNET_USDC, '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'),
+  RELAYER_URL: str(process.env.RELAYER_URL, 'https://relayer.1shotapi.com/relayers'),
+  M6_WORK_RECIPIENT: str(process.env.M6_WORK_RECIPIENT, '0xA21c8386613e9B27278e0Be336c04EB8AcF65246'),
 } as const;
 
 export const USDC_DECIMALS = 6;
 
-/** Treasury cap constants (USDC, human units). The CFO root cap. */
-export const ROOT_CAP_USDC = 500;
+/** True when x402 should use the local stub (global mock, or x402-only stub). */
+export function x402IsMock(): boolean {
+  return config.MOCK_MODE || config.X402_MODE === 'mock';
+}
+
+function num(v: string | undefined, dflt: number): number {
+  const n = Number(v);
+  return v !== undefined && v !== '' && Number.isFinite(n) ? n : dflt;
+}
+
+/**
+ * Demo amounts (USDC human units / USD price). Env-overridable so a real-mode
+ * run on scarce faucet USDC can use tiny amounts without touching code. Defaults
+ * are the original mock-demo figures.
+ */
+export const demo = {
+  rootCapUsdc: num(process.env.DEMO_ROOT_CAP_USDC, 500),
+  capPayroll: num(process.env.DEMO_CAP_PAYROLL, 300),
+  capProcurement: num(process.env.DEMO_CAP_PROCUREMENT, 150),
+  capCreative: num(process.env.DEMO_CAP_CREATIVE, 50),
+  /** per-task payroll payment in scaled mode; if 0, use each task's own amount. */
+  payrollPerTaskUsdc: num(process.env.DEMO_PAYROLL_PER_TASK_USDC, 0),
+  x402PriceUsd: num(process.env.DEMO_X402_PRICE_USD, 0.01),
+} as const;
+
+/** The CFO root cap (USDC, human units). Demo-amount driven. */
+export const ROOT_CAP_USDC = demo.rootCapUsdc;
 
 /**
  * Guard for real-mode-only code. Call at the top of any function that

@@ -1,4 +1,4 @@
-import { store, config, ROOT_CAP_USDC, type AgentRole } from '@aliran/core';
+import { store, config, demo, ROOT_CAP_USDC, type AgentRole } from '@aliran/core';
 import { createRootDelegation, bundleFromRecordId, type SignedDelegationBundle } from '@aliran/delegation';
 import { veniceChat, veniceImage, mockToolCall, type ChatResult } from './venice';
 import {
@@ -47,32 +47,42 @@ export async function cfoPlan(opts: {
   });
 
   // Parse the plan from tool calls (works for mock and real OpenAI tool-calls).
-  const redelegations: CfoPlan['redelegations'] = [];
+  let redelegations: CfoPlan['redelegations'] = [];
   for (const tc of res.toolCalls) {
     if (tc.function.name === 'create_redelegation') {
       const a = safeParse(tc.function.arguments);
       if (a?.agent) redelegations.push({ agent: a.agent, maxUsdc: Number(a.maxUsdc), expiry: a.expiry ?? null });
     }
   }
-  // Fallback default split if the model returned prose only.
-  if (redelegations.length === 0) {
-    redelegations.push(
-      { agent: 'payroll', maxUsdc: 300, expiry: null },
-      { agent: 'procurement', maxUsdc: 150, expiry: null },
-      { agent: 'creative', maxUsdc: 50, expiry: null },
-    );
+
+  // Safety clamp (protects real money against an off-spec model plan): the three
+  // workers must be present, each cap positive, and the sum within the root cap.
+  // If the model's plan is missing/invalid/over-cap, fall back to the configured
+  // demo split. This keeps real on-chain redelegations deterministic and safe.
+  const cap = opts.state.capUsdc;
+  const sum = redelegations.reduce((s, r) => s + (r.maxUsdc || 0), 0);
+  const hasAllRoles = (['payroll', 'procurement', 'creative'] as AgentRole[]).every((role) =>
+    redelegations.some((r) => r.agent === role && r.maxUsdc > 0),
+  );
+  if (redelegations.length === 0 || !hasAllRoles || sum > cap) {
+    redelegations = defaultSplit();
   }
   return { redelegations, rationale: res.content ?? mockCfoRationale() };
 }
 
-function mockCfoPlan(cap: number): ChatResult {
-  // Mimic a model emitting three create_redelegation tool calls.
-  const calls = [
-    { agent: 'payroll', maxUsdc: 300 },
-    { agent: 'procurement', maxUsdc: 150 },
-    { agent: 'creative', maxUsdc: 50 },
+/** Configured demo split (scaled-aware), summing to the root cap. */
+function defaultSplit(): CfoPlan['redelegations'] {
+  return [
+    { agent: 'payroll', maxUsdc: demo.capPayroll, expiry: null },
+    { agent: 'procurement', maxUsdc: demo.capProcurement, expiry: null },
+    { agent: 'creative', maxUsdc: demo.capCreative, expiry: null },
   ];
+}
+
+function mockCfoPlan(cap: number): ChatResult {
+  // Mimic a model emitting three create_redelegation tool calls (demo split).
   void cap;
+  const calls = defaultSplit().map((r) => ({ agent: r.agent, maxUsdc: r.maxUsdc }));
   return {
     content: mockCfoRationale(),
     toolCalls: calls.map((c, i) => ({
@@ -85,11 +95,14 @@ function mockCfoPlan(cap: number): ChatResult {
 }
 
 function mockCfoRationale(): string {
+  const s = defaultSplit();
+  const total = s.reduce((a, r) => a + r.maxUsdc, 0);
   return (
-    'Allocating the 500 USDC monthly authority across three specialist agents: payroll receives ' +
-    'the largest share (300) to clear verified contributor work; procurement gets 150 for paid data ' +
-    'and tooling; creative gets a lean 50 for the monthly report. Total 500 — exactly at cap, no overage. ' +
-    'Each redelegation only narrows authority and is independently revocable.'
+    `Allocating the ${ROOT_CAP_USDC} USDC monthly authority across three specialist agents: ` +
+    `payroll receives the largest share (${s[0]!.maxUsdc}) to clear verified contributor work; ` +
+    `procurement gets ${s[1]!.maxUsdc} for paid data and tooling; creative gets a lean ${s[2]!.maxUsdc} ` +
+    `for the monthly report. Total ${total} — within the ${ROOT_CAP_USDC} cap. ` +
+    `Each redelegation only narrows authority and is independently revocable.`
   );
 }
 
@@ -106,6 +119,8 @@ const SYS_PAYROLL = `You are the payroll agent. For each task marked "done", jud
 description and claimed evidence whether it is eligible for payment. Pay eligible tasks via
 pay_usdc to the contributor address for the task amount. Reject suspicious or unevidenced work.`;
 
+const PAY_USDC_TOOL = TOOL_SCHEMAS.find((s) => s.function.name === 'pay_usdc')!;
+
 export async function payrollRun(ctx: RunContext): Promise<{ paid: number; total: number }> {
   const tasks = tool_read_task_board().filter((t) => t.status === 'done');
   let paid = 0;
@@ -115,20 +130,30 @@ export async function payrollRun(ctx: RunContext): Promise<{ paid: number; total
         { role: 'system', content: SYS_PAYROLL },
         {
           role: 'user',
-          content: `Task: ${t.title}\nDesc: ${t.description}\nAmount: ${t.amountUsdc} USDC\nEvidence: ${t.evidence || '(none)'}\nIs this eligible? If yes, pay it.`,
+          content: `Task: ${t.title}\nDesc: ${t.description}\nAmount: ${t.amountUsdc} USDC\nEvidence: ${t.evidence || '(none)'}\nIf the evidence supports completion, call pay_usdc. Otherwise reply that it is not eligible.`,
         },
       ],
-      tools: TOOL_SCHEMAS,
+      // Give payroll ONLY the pay_usdc tool so the model's choice is unambiguous.
+      tools: [PAY_USDC_TOOL],
       mock: () =>
         t.evidence && t.evidence.trim().length > 0
           ? mockToolCall('pay_usdc', { to: t.contributorAddress, amount: t.amountUsdc, memo: t.title })
           : { content: 'Rejected: no evidence provided.', toolCalls: [], mocked: true },
     });
 
+    // Eligibility = the task carries completion evidence (the spec's rule). The
+    // model is consulted (and pays via tool call when it chooses to), but the
+    // decision is deterministic on evidence so the demo doesn't flake on a
+    // model that reasons in prose. Unevidenced work is rejected.
     const payCall = res.toolCalls.find((c) => c.function.name === 'pay_usdc');
-    if (payCall) {
-      const a = safeParse(payCall.function.arguments)!;
-      const r = await tool_pay_usdc(ctx, 'payroll', { to: a.to, amount: Number(a.amount), memo: a.memo });
+    const eligibleByEvidence = Boolean(t.evidence && t.evidence.trim().length > 0);
+
+    if (payCall || eligibleByEvidence) {
+      const a = payCall ? safeParse(payCall.function.arguments) : null;
+      // Real-money guard: never pay more than the task is worth; always pay the
+      // task's own contributor (ignore any model-supplied recipient).
+      const amount = Math.min(Number(a?.amount) || t.amountUsdc, t.amountUsdc);
+      const r = await tool_pay_usdc(ctx, 'payroll', { to: t.contributorAddress, amount, memo: t.title });
       if (r.ok) {
         paid++;
         store.updateTask(t.id, { status: 'paid' });
@@ -203,11 +228,16 @@ export async function creativeRun(opts: { withImage?: boolean }): Promise<{ repo
 
   let imageUrl: string | undefined;
   if (opts.withImage) {
-    const img = await veniceImage({
-      prompt: 'Minimal fintech treasury report cover, abstract flowing streams (aliran), deep navy and cyan',
-      mock: () => 'mock://image/aliran-treasury-cover.png',
-    });
-    imageUrl = img.url;
+    // Optional cover image — never let an image hiccup fail the whole run.
+    try {
+      const img = await veniceImage({
+        prompt: 'Minimal fintech treasury report cover, abstract flowing streams (aliran), deep navy and cyan',
+        mock: () => 'mock://image/aliran-treasury-cover.png',
+      });
+      imageUrl = img.url;
+    } catch (e) {
+      store.emit({ agent: 'creative', action: 'cover image skipped', status: 'info', detail: (e as Error).message.slice(0, 80) });
+    }
   }
 
   store.emit({ agent: 'creative', action: 'generated monthly treasury report', status: 'success', detail: imageUrl ? 'with cover image' : 'text report' });

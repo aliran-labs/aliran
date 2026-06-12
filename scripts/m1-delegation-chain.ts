@@ -16,7 +16,7 @@
  *
  * Run: pnpm m1
  */
-import { config, store, ROOT_CAP_USDC } from '@aliran/core';
+import { config, store, demo, ROOT_CAP_USDC } from '@aliran/core';
 import {
   createRootDelegation,
   createRedelegation,
@@ -86,46 +86,48 @@ async function main() {
   ok(`root signed: owner ${root.fromAddress.slice(0, 10)}… → CFO ${root.toAddress.slice(0, 10)}… cap=${root.capUsdc} USDC`);
 
   // 2. Redelegation CFO -> payroll -------------------------------------------
-  console.log('\n[2] CFO → payroll redelegation (narrowed to 300)');
+  console.log(`\n[2] CFO → payroll redelegation (narrowed to ${demo.capPayroll})`);
   const payroll = await createRedelegation({
     parent: root,
     fromRole: 'cfo',
     toRole: 'payroll',
-    capUsdc: 300,
+    capUsdc: demo.capPayroll,
   });
   ok(`redelegation signed: cap=${payroll.capUsdc} (chain length=${payroll.chain.length})`);
 
   // Prove narrowing-only is enforced at construction.
   console.log('\n[2b] Attempt to WIDEN beyond parent (expect rejection)');
   try {
-    await createRedelegation({ parent: payroll, fromRole: 'payroll', toRole: 'creative', capUsdc: 999 });
+    await createRedelegation({ parent: payroll, fromRole: 'payroll', toRole: 'creative', capUsdc: ROOT_CAP_USDC * 100 });
     bad('widening was NOT rejected — BUG');
     process.exitCode = 1;
   } catch (e) {
     ok(`widening rejected: ${(e as Error).message.split(';')[0]}`);
   }
 
-  // 3. Successful redemption: payroll pays contributor 120 -------------------
-  console.log('\n[3] Payroll redeems 120 USDC → contributor (expect SUCCESS)');
+  // 3. Successful redemption: payroll pays contributor (small amount) ---------
+  const payAmount = demo.payrollPerTaskUsdc > 0 ? demo.payrollPerTaskUsdc : 0.5;
+  console.log(`\n[3] Payroll redeems ${payAmount} USDC → contributor (expect SUCCESS)`);
   const r1 = await redeemTransfer({
     leaf: payroll,
     recipient: contributor,
-    amountUsdc: 120,
+    amountUsdc: payAmount,
     byRole: 'payroll',
     memo: 'task: ship delegation tree UI',
   });
-  if (r1.ok) ok(`paid 120 USDC ${r1.dryRun ? '[dry-run]' : ''} tx=${r1.txHash?.slice(0, 14)}…`);
+  if (r1.ok) ok(`paid ${payAmount} USDC ${r1.dryRun ? '[dry-run]' : ''} tx=${r1.txHash?.slice(0, 14)}…`);
   else {
     bad(`unexpected failure: ${r1.error}`);
     process.exitCode = 1;
   }
 
   // 4. Over-cap redemption (expect protocol-level FAIL) ----------------------
-  console.log('\n[4] Payroll redeems 9999 USDC (over 300 cap) — force on-chain revert');
+  const overAmount = demo.capPayroll * 1000;
+  console.log(`\n[4] Payroll redeems ${overAmount} USDC (over ${demo.capPayroll} cap) — force on-chain revert`);
   const r2 = await redeemTransfer({
     leaf: payroll,
     recipient: contributor,
-    amountUsdc: 9999,
+    amountUsdc: overAmount,
     byRole: 'payroll',
     memo: 'overspend demo',
     forceOverspend: true, // bypass local pre-check → exercise the revert path
@@ -147,7 +149,7 @@ async function main() {
   const r3 = await redeemTransfer({
     leaf: payroll,
     recipient: contributor,
-    amountUsdc: 10,
+    amountUsdc: payAmount,
     byRole: 'payroll',
     memo: 'post-revoke attempt',
   });

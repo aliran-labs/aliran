@@ -10,9 +10,14 @@
     "dev:seller": "pnpm --filter @aliran/seller dev",
     "build": "pnpm -r build",
     "setup:demo": "tsx scripts/setup-demo.ts",
+    "phase0": "tsx scripts/phase0-verify.ts",
+    "phase1": "tsx scripts/phase1-addresses.ts",
+    "deploy:accounts": "tsx scripts/deploy-accounts.ts",
+    "x402:setup": "tsx scripts/x402-setup-buyer.ts",
     "m1": "tsx scripts/m1-delegation-chain.ts",
     "m2": "tsx scripts/m2-x402-buy.ts",
     "m3": "tsx scripts/m3-run-month.ts",
+    "m6": "tsx scripts/m6-relayer-demo.ts",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {

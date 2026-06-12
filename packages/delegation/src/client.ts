@@ -36,3 +36,33 @@ export function getBundlerClient(): BundlerClient {
   });
   return _bundler;
 }
+
+/**
+ * Realistic userOp gas fees. Pimlico exposes `pimlico_getUserOperationGasPrice`;
+ * fall back to the public client's fee estimate. (The mock path uses 1n/1n and
+ * never calls this.)
+ */
+export async function getUserOpFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }> {
+  // Try Pimlico's gas-price endpoint first.
+  try {
+    const res = await fetch(config.BUNDLER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'pimlico_getUserOperationGasPrice', params: [] }),
+    });
+    const j = (await res.json()) as { result?: { fast?: { maxFeePerGas: string; maxPriorityFeePerGas: string } } };
+    const fast = j.result?.fast;
+    if (fast?.maxFeePerGas && fast?.maxPriorityFeePerGas) {
+      return { maxFeePerGas: BigInt(fast.maxFeePerGas), maxPriorityFeePerGas: BigInt(fast.maxPriorityFeePerGas) };
+    }
+  } catch {
+    /* fall through */
+  }
+  // Fallback: public client fee estimate with a small priority tip.
+  const pc = getPublicClient();
+  const fees = await pc.estimateFeesPerGas();
+  return {
+    maxFeePerGas: fees.maxFeePerGas ?? 1_000_000_000n,
+    maxPriorityFeePerGas: fees.maxPriorityFeePerGas ?? 1_000_000n,
+  };
+}

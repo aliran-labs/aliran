@@ -16,14 +16,19 @@ export const ROLE_PK: Record<Exclude<AgentRole, 'owner'> | 'owner', string> = {
   creative: config.AGENT_CREATIVE_PK,
 };
 
-export function hasKey(role: AgentRole): boolean {
-  return Boolean(ROLE_PK[role]);
+/** A valid signer key is 0x + 64 hex chars (32 bytes). */
+export function isValidPk(v: string): boolean {
+  return /^0x[0-9a-fA-F]{64}$/.test(v);
 }
 
-/** Returns a viem account for the role, or null if no key configured. */
+export function hasKey(role: AgentRole): boolean {
+  return isValidPk(ROLE_PK[role]);
+}
+
+/** Returns a viem account for the role, or null if no valid key configured. */
 export function accountForRole(role: AgentRole) {
   const pk = ROLE_PK[role];
-  if (!pk) return null;
+  if (!isValidPk(pk)) return null;
   return privateKeyToAccount(pk as Hex);
 }
 
