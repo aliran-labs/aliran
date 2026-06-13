@@ -47,6 +47,7 @@ export interface Receipt {
   id: string;
   url: string;
   paymentPayloadHash?: string;
+  txHash?: string;
   synthesis?: string;
   response: unknown;
   createdAt: number;

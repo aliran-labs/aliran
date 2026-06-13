@@ -57,6 +57,14 @@ redelegation + 7710 redemption **and** x402-over-ERC-7710 all work (see `docs/NO
 **Agents never hold keys.** Every tool call routes into `packages/delegation`, which holds the
 signing. Caps are enforced **on-chain** by the kit's caveats; the UI mirrors spend locally.
 
+**Design system (`apps/web`):** tokens live in `tailwind.config.ts` + `globals.css` (dark
+`#0B0F14` surfaces, cyan→teal brand gradient, per-agent colors), with Space Grotesk (display),
+Inter (body) and JetBrains Mono (all addresses/hashes/amounts) via `next/font`. The delegation
+tree is a hand-built SVG with animated edge-draws, the activity feed is a streaming timeline,
+and all motion (framer-motion) is fast and gated behind `prefers-reduced-motion`. Agent art
+loads from `/assets/...` with graceful colored fallbacks, so the build never breaks if a PNG
+is missing.
+
 ---
 
 ## Run it
