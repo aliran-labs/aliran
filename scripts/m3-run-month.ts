@@ -10,11 +10,16 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { config, store } from '@aliran/core';
 import { runMonth, attemptOverspend } from '@aliran/agents';
-import { ROLE_PK } from '@aliran/delegation';
+import { ROLE_PK, createRootDelegation } from '@aliran/delegation';
 import { generatePrivateKey } from 'viem/accounts';
 
 const SELLER_URL = config.SELLER_URL;
 const BRIEF_URL = `${SELLER_URL}/api/market-brief`;
+
+// Test-only grant budget for this headless script. In the product the owner
+// types this and signs in MetaMask; here the script signs the root with the
+// owner key directly so the month can run without a browser wallet.
+const TEST_GRANT_BUDGET = 8;
 
 // mint ephemeral keys for all roles in mock mode
 if (config.MOCK_MODE) {
@@ -51,6 +56,10 @@ async function main() {
     const t0 = Date.now();
     while (Date.now() - t0 < 15000 && !(await isUp())) await new Promise((r) => setTimeout(r, 400));
   }
+
+  // [0] Owner grants the root delegation (the product does this via the wallet UI).
+  const root = await createRootDelegation({ fromRole: 'owner', toRole: 'cfo', capUsdc: TEST_GRANT_BUDGET });
+  console.log(`\n── Owner grant ──\n   root cap=${root.capUsdc} USDC  owner ${root.fromAddress.slice(0, 10)}… → CFO ${root.toAddress.slice(0, 10)}…`);
 
   const result = await runMonth({
     instruction: "run this month's operations",
