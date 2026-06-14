@@ -12,6 +12,7 @@
     "@aliran/agents": "workspace:*",
     "@aliran/core": "workspace:*",
     "@aliran/delegation": "workspace:*",
+    "@metamask/smart-accounts-kit": "^1.6.0",
     "framer-motion": "^12.40.0",
     "next": "^14.2.20",
     "react": "^18.3.1",
