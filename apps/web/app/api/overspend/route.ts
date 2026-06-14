@@ -5,6 +5,7 @@ import { ensureMockKeys } from '../_bootstrap';
 import type { Address } from 'viem';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 /**
  * Demo step 7: the procurement agent deliberately attempts to spend beyond its

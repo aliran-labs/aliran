@@ -113,13 +113,14 @@ async function installRoutes() {
   console.log(`[seller] MOCK x402 stub; price=${PRICE_STR}`);
 }
 
+// Render (and most PaaS) inject the port via $PORT; fall back to SELLER_PORT locally.
+const LISTEN_PORT = Number(process.env.PORT) || config.SELLER_PORT;
+
 installRoutes()
   .then(() => {
-    app.listen(config.SELLER_PORT, () => {
+    app.listen(LISTEN_PORT, () => {
       // eslint-disable-next-line no-console
-      console.log(
-        `[seller] listening on http://localhost:${config.SELLER_PORT}  (mock=${config.MOCK_MODE}, ${NETWORK})`,
-      );
+      console.log(`[seller] listening on :${LISTEN_PORT}  (mock=${config.MOCK_MODE}, ${NETWORK})`);
     });
   })
   .catch((e) => {

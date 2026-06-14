@@ -4,6 +4,7 @@ import { store } from '@aliran/core';
 import { ensureMockKeys } from '../_bootstrap';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 /** Owner revokes a delegation with one click (demo step 7b). */
 export async function POST(req: Request) {

@@ -43,7 +43,17 @@ const empty: DbShape = {
   runs: [],
 };
 
+// On a writable filesystem (local dev) the JSON file is the source of truth, so
+// the web app, seller, and scripts all share state. On a read-only serverless
+// filesystem (e.g. Vercel) the first write throws; we then fall back to an
+// in-memory copy for the lifetime of that function instance. State is no longer
+// shared across instances/cold-starts there — fine for a demo (re-seedable), and
+// upgradeable to a hosted KV without touching callers (the API stays sync).
+let memoryMode = false;
+let memory: DbShape = structuredClone(empty);
+
 function read(): DbShape {
+  if (memoryMode) return structuredClone(memory);
   if (!existsSync(DB_PATH)) return structuredClone(empty);
   try {
     const raw = readFileSync(DB_PATH, 'utf8');
@@ -54,8 +64,18 @@ function read(): DbShape {
 }
 
 function write(db: DbShape): void {
-  mkdirSync(dirname(DB_PATH), { recursive: true });
-  writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+  if (memoryMode) {
+    memory = structuredClone(db);
+    return;
+  }
+  try {
+    mkdirSync(dirname(DB_PATH), { recursive: true });
+    writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+  } catch {
+    // read-only filesystem (serverless) → switch to in-memory for this instance
+    memoryMode = true;
+    memory = structuredClone(db);
+  }
 }
 
 export const store = {

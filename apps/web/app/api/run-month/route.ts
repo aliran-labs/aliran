@@ -4,6 +4,9 @@ import { runMonth } from '@aliran/agents';
 import { ensureMockKeys } from '../_bootstrap';
 
 export const dynamic = 'force-dynamic';
+// run-month orchestrates several on-chain userOps (payroll payouts + x402 +
+// report) and can take 30–60s+. Vercel Pro honors up to 300s; Hobby clamps to 60s.
+export const maxDuration = 300;
 
 /** Runs the full month: plan -> redelegate -> payroll -> procurement -> report. */
 export async function POST(req: Request) {
