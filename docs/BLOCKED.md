@@ -27,7 +27,7 @@ provided and verified this session. Switching a fresh clone to real mode is the
 | `RPC_URL` | All chain reads/writes | Base Sepolia RPC (Alchemy/Infura/public). Paste URL. |
 | `BUNDLER_URL` | 7710 redemption userOps (M1+) | Pimlico/other ERC-4337 bundler for Base Sepolia. **Required** — redeem can't broadcast without it. |
 | `USDC_ADDRESS` | USDC transfers | Defaulted to `0x036C…F7e`. **Verify** vs supported-networks docs before real run. |
-| `OWNER_PRIVATE_KEY` | Owner smart account (env-key demo mode) | `pnpm setup:demo` generates one; or use MetaMask (`DEMO_MODE=wallet`). |
+| `OWNER_PRIVATE_KEY` | Owner smart-account signer | `pnpm setup:demo` generates one. The owner **always signs the grant via MetaMask** — import this key into MetaMask so the connected account matches. |
 | `AGENT_CFO_PK` … `AGENT_CREATIVE_PK` | The 4 agent smart accounts | `pnpm setup:demo` generates any missing; paste printed keys into `.env`. |
 | `CONTRIBUTOR_ADDRESSES` | Payroll payees | Any 2–3 EOAs you control, comma-separated. |
 | `VENICE_API_KEY` | Real agent reasoning (M3+) | venice.ai dashboard → API key. Until set, agents use canned responses. |
