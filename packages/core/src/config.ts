@@ -98,8 +98,6 @@ export const demo = {
   capPayroll: num(process.env.DEMO_CAP_PAYROLL, 300),
   capProcurement: num(process.env.DEMO_CAP_PROCUREMENT, 150),
   capCreative: num(process.env.DEMO_CAP_CREATIVE, 50),
-  /** per-task payroll payment in scaled mode; if 0, use each task's own amount. */
-  payrollPerTaskUsdc: num(process.env.DEMO_PAYROLL_PER_TASK_USDC, 0),
 } as const;
 
 /** The CFO root cap (USDC, human units). Demo-amount driven. */
