@@ -1,4 +1,4 @@
-import { store, config, demo, ROOT_CAP_USDC, type AgentRole } from '@aliran/core';
+import { store, config, ROOT_CAP_USDC, type AgentRole } from '@aliran/core';
 import { createRootDelegation, bundleFromRecordId, type SignedDelegationBundle } from '@aliran/delegation';
 import { veniceChat, veniceImage, mockToolCall, type ChatResult } from './venice';
 import {
@@ -57,34 +57,51 @@ export async function cfoPlan(opts: {
 
   // Safety clamp (protects real money against an off-spec model plan): the three
   // workers must be present, each cap positive, and the sum within the root cap.
-  // If the model's plan is missing/invalid/over-cap, fall back to the configured
-  // demo split. This keeps real on-chain redelegations deterministic and safe.
+  // If the model's plan is missing/invalid/over-cap, fall back to the budget-
+  // derived split. This keeps real on-chain redelegations deterministic and safe.
   const cap = opts.state.capUsdc;
   const sum = redelegations.reduce((s, r) => s + (r.maxUsdc || 0), 0);
   const hasAllRoles = (['payroll', 'procurement', 'creative'] as AgentRole[]).every((role) =>
     redelegations.some((r) => r.agent === role && r.maxUsdc > 0),
   );
   if (redelegations.length === 0 || !hasAllRoles || sum > cap) {
-    redelegations = defaultSplit();
+    redelegations = deriveSplit(cap);
   }
-  return { redelegations, rationale: res.content ?? mockCfoRationale() };
+  return { redelegations, rationale: res.content ?? mockCfoRationale(cap) };
 }
 
-/** Configured demo split (scaled-aware), summing to the root cap. */
-function defaultSplit(): CfoPlan['redelegations'] {
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Derive the redelegation split from the granted budget + concrete obligations.
+ * No fixed numbers: payroll = the sum of verified ("done") task amounts, capped
+ * at 80% of the budget so a discretionary buffer always remains; the remainder
+ * funds procurement (70%) and creative (30%). Everything scales with the actual
+ * grant and the live task board.
+ */
+function deriveSplit(cap: number): CfoPlan['redelegations'] {
+  const obligations = store
+    .read()
+    .tasks.filter((t) => t.status === 'done')
+    .reduce((s, t) => s + (t.amountUsdc || 0), 0);
+  const payroll = round2(Math.min(obligations, cap * 0.8));
+  const remainder = Math.max(0, cap - payroll);
+  const procurement = round2(remainder * 0.7);
+  const creative = round2(Math.max(0, remainder - procurement));
   return [
-    { agent: 'payroll', maxUsdc: demo.capPayroll, expiry: null },
-    { agent: 'procurement', maxUsdc: demo.capProcurement, expiry: null },
-    { agent: 'creative', maxUsdc: demo.capCreative, expiry: null },
+    { agent: 'payroll', maxUsdc: payroll, expiry: null },
+    { agent: 'procurement', maxUsdc: procurement, expiry: null },
+    { agent: 'creative', maxUsdc: creative, expiry: null },
   ];
 }
 
 function mockCfoPlan(cap: number): ChatResult {
-  // Mimic a model emitting three create_redelegation tool calls (demo split).
-  void cap;
-  const calls = defaultSplit().map((r) => ({ agent: r.agent, maxUsdc: r.maxUsdc }));
+  // Mimic a model emitting three create_redelegation tool calls (derived split).
+  const calls = deriveSplit(cap).map((r) => ({ agent: r.agent, maxUsdc: r.maxUsdc }));
   return {
-    content: mockCfoRationale(),
+    content: mockCfoRationale(cap),
     toolCalls: calls.map((c, i) => ({
       id: `mock_redel_${i}`,
       type: 'function' as const,
@@ -94,14 +111,14 @@ function mockCfoPlan(cap: number): ChatResult {
   };
 }
 
-function mockCfoRationale(): string {
-  const s = defaultSplit();
-  const total = s.reduce((a, r) => a + r.maxUsdc, 0);
+function mockCfoRationale(cap: number): string {
+  const s = deriveSplit(cap);
+  const total = round2(s.reduce((a, r) => a + r.maxUsdc, 0));
   return (
-    `Allocating the ${ROOT_CAP_USDC} USDC monthly authority across three specialist agents: ` +
-    `payroll receives the largest share (${s[0]!.maxUsdc}) to clear verified contributor work; ` +
-    `procurement gets ${s[1]!.maxUsdc} for paid data and tooling; creative gets a lean ${s[2]!.maxUsdc} ` +
-    `for the monthly report. Total ${total} — within the ${ROOT_CAP_USDC} cap. ` +
+    `Allocating the ${cap} USDC monthly authority across three specialist agents: ` +
+    `payroll receives ${s[0]!.maxUsdc} to clear verified contributor work; ` +
+    `procurement gets ${s[1]!.maxUsdc} for paid data and tooling; creative gets ${s[2]!.maxUsdc} ` +
+    `for the monthly report. Total ${total} — within the ${cap} cap. ` +
     `Each redelegation only narrows authority and is independently revocable.`
   );
 }
