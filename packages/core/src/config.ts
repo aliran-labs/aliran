@@ -50,6 +50,9 @@ export const config = {
 
   SELLER_PORT: Number(str(process.env.SELLER_PORT, '4021')),
   SELLER_PAY_TO_ADDRESS: str(process.env.SELLER_PAY_TO_ADDRESS),
+  // The seller owns its product price (USD). The buyer never assumes this — it
+  // always reads the price from the seller's real 402 challenge.
+  SELLER_PRICE_USD: num(process.env.SELLER_PRICE_USD, 0.05),
   SELLER_URL: str(process.env.SELLER_URL, 'http://localhost:4021'),
   X402_FACILITATOR_URL: str(process.env.X402_FACILITATOR_URL),
   // Facilitator address(es) the buyer's open delegation is restricted to
@@ -97,7 +100,6 @@ export const demo = {
   capCreative: num(process.env.DEMO_CAP_CREATIVE, 50),
   /** per-task payroll payment in scaled mode; if 0, use each task's own amount. */
   payrollPerTaskUsdc: num(process.env.DEMO_PAYROLL_PER_TASK_USDC, 0),
-  x402PriceUsd: num(process.env.DEMO_X402_PRICE_USD, 0.01),
 } as const;
 
 /** The CFO root cap (USDC, human units). Demo-amount driven. */

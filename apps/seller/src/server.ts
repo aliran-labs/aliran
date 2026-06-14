@@ -1,5 +1,5 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
-import { config, demo, x402IsMock } from '@aliran/core';
+import { config, x402IsMock } from '@aliran/core';
 import { MARKET_BRIEF } from './marketData';
 
 /**
@@ -18,7 +18,7 @@ import { MARKET_BRIEF } from './marketData';
  * Either way: GET /api/market-brief returns 402 until paid, then the data.
  */
 
-const PRICE_USD = demo.x402PriceUsd;
+const PRICE_USD = config.SELLER_PRICE_USD;
 const PRICE_STR = `$${PRICE_USD.toFixed(2)}`;
 const USDC_DECIMALS = 6;
 const AMOUNT_ATOMIC = String(Math.round(PRICE_USD * 10 ** USDC_DECIMALS));
