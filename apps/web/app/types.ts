@@ -1,6 +1,6 @@
 /** Mirror of the API /state response shape for the client. */
 export interface DashboardState {
-  mode: { mock: boolean; demoMode: string; chainId: number; rootCap: number };
+  mode: { mock: boolean; demoMode: string; chainId: number };
   treasury: { capUsdc: number; remainingUsdc: number; taskCount: number; openTasks: number };
   delegations: Delegation[];
   transactions: Tx[];

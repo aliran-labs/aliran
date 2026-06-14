@@ -2,7 +2,7 @@
  * scripts/phase1-addresses.ts — compute & print smart-account addresses to fund.
  * Prints ONLY addresses (never keys). Also prints current ETH/USDC balances.
  */
-import { config, demo, ROOT_CAP_USDC } from '@aliran/core';
+import { config } from '@aliran/core';
 import { smartAccountForRole, ROLES } from '@aliran/delegation';
 import { createPublicClient, http, erc20Abi, formatUnits, type Address } from 'viem';
 import { baseSepolia } from 'viem/chains';
@@ -43,11 +43,11 @@ async function main() {
   const procurement = info.find((i) => i.role === 'procurement');
 
   const cfo = info.find((i) => i.role === 'cfo');
-  console.log('\nFUNDING CHECKLIST (scaled demo: rootCap=' + ROOT_CAP_USDC + ' USDC):');
+  console.log('\nFUNDING CHECKLIST (the owner grants a budget in-app; fund the treasury for it):');
   console.log('─'.repeat(72));
   console.log('1) USDC → OWNER SMART ACCOUNT (the treasury that pays out):');
   console.log(`     ${owner?.address ?? '(owner key missing)'}`);
-  console.log(`     Send ~5 USDC (covers payroll ${demo.payrollPerTaskUsdc}×3 + x402 ${demo.x402PriceUsd} + headroom).`);
+  console.log('     Send enough USDC to cover the budget you intend to grant + the x402 price + headroom.');
   console.log('\n2) Base Sepolia ETH (gas) → these four smart accounts:');
   console.log(`     owner       ${owner?.address ?? '-'}   deploy + submit revoke      ~0.01 ETH`);
   console.log(`     cfo         ${cfo?.address ?? '-'}   deploy (chain-sig validation) ~0.005 ETH`);

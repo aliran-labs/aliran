@@ -87,7 +87,7 @@ export async function attemptOverspend(ctx: RunContext): Promise<{ ok: boolean; 
 export function treasuryState() {
   const db = store.read();
   const root = db.delegations.find((d) => d.parentId === null);
-  const cap = root?.capUsdc ?? 500;
+  const cap = root?.capUsdc ?? 0; // no grant yet → no treasury authority
   const spent = db.transactions
     .filter((t) => t.kind === 'transfer' && (t.status === 'success' || t.status === 'dry-run'))
     .reduce((s, t) => s + (t.amountUsdc ?? 0), 0);

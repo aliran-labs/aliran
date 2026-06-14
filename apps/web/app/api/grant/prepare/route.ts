@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ROOT_CAP_USDC, store } from '@aliran/core';
+import { store } from '@aliran/core';
 import { ensureMockKeys } from '../../_bootstrap';
 import { buildGrant, ownerSignerAddress } from '../walletGrant';
 
@@ -13,7 +13,10 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   ensureMockKeys();
   const body = await req.json().catch(() => ({}));
-  const cap = Number(body.capUsdc) || ROOT_CAP_USDC;
+  const cap = Number(body.capUsdc);
+  if (!Number.isFinite(cap) || cap <= 0) {
+    return NextResponse.json({ ok: false, error: 'Enter a budget (USDC) greater than 0 to grant.' }, { status: 400 });
+  }
 
   const existing = store
     .read()

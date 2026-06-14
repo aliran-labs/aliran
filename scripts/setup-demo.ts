@@ -11,7 +11,7 @@
  *
  * Run: pnpm setup:demo
  */
-import { config, store, USDC_DECIMALS, demo } from '@aliran/core';
+import { config, store, USDC_DECIMALS } from '@aliran/core';
 import { ROLES, ROLE_PK, accountForRole, newKey } from '@aliran/delegation';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { Hex } from 'viem';
@@ -138,16 +138,14 @@ if (db.tasks.length === 0) {
     },
   ];
 
-  // Scaled mode: if DEMO_PAYROLL_PER_TASK_USDC is set, use it for every task so
-  // real payroll payments stay tiny (faucet USDC is scarce).
-  const perTask = demo.payrollPerTaskUsdc;
+  // Each task carries its own amount (no flat per-task preset).
   for (let i = 0; i < seed.length; i++) {
     const t = seed[i]!;
     store.addTask({
       title: t.title,
       description: t.description,
       contributorAddress: contributors[i % contributors.length]!,
-      amountUsdc: perTask > 0 ? perTask : t.amountUsdc,
+      amountUsdc: t.amountUsdc,
       status: t.status,
       evidence: t.evidence,
     });

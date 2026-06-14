@@ -38,10 +38,11 @@ export function useAppState(): AppStateCtx {
 }
 
 /** Treasury cap/remaining — single source used across topbar, report, settings.
- *  Fixes the stale 500 fallback: cap comes from the granted root (or rootCap). */
+ *  Cap/remaining come purely from the on-chain root delegation; before any grant
+ *  there is no treasury authority (0). No config/preset fallback. */
 export function treasuryView(state: DashboardState) {
   const root = state.delegations.find((d) => d.parentId === null);
-  const cap = root ? state.treasury.capUsdc : state.mode.rootCap;
-  const remaining = root ? state.treasury.remainingUsdc : state.mode.rootCap;
+  const cap = root ? state.treasury.capUsdc : 0;
+  const remaining = root ? state.treasury.remainingUsdc : 0;
   return { root, cap, remaining, spent: Math.max(0, cap - remaining) };
 }

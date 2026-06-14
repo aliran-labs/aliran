@@ -89,21 +89,6 @@ function num(v: string | undefined, dflt: number): number {
 }
 
 /**
- * Demo amounts (USDC human units / USD price). Env-overridable so a real-mode
- * run on scarce faucet USDC can use tiny amounts without touching code. Defaults
- * are the original mock-demo figures.
- */
-export const demo = {
-  rootCapUsdc: num(process.env.DEMO_ROOT_CAP_USDC, 500),
-  capPayroll: num(process.env.DEMO_CAP_PAYROLL, 300),
-  capProcurement: num(process.env.DEMO_CAP_PROCUREMENT, 150),
-  capCreative: num(process.env.DEMO_CAP_CREATIVE, 50),
-} as const;
-
-/** The CFO root cap (USDC, human units). Demo-amount driven. */
-export const ROOT_CAP_USDC = demo.rootCapUsdc;
-
-/**
  * Guard for real-mode-only code. Call at the top of any function that
  * broadcasts a transaction or hits a live API. In MOCK_MODE these paths are
  * never reached (callers branch on config.MOCK_MODE first), so this is a

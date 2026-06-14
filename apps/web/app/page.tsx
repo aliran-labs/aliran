@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAppState } from './lib/appState';
 import { useWallet } from './lib/wallet';
-import { short } from './lib/ui';
+import { short, usdc } from './lib/ui';
 import { DelegationTree } from './components/DelegationTree';
 import { ActivityFeed } from './components/ActivityFeed';
 import { Stepper, TaskBoard, Receipts } from './components/Panels';
@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const wallet = useWallet();
   const [busy, setBusy] = useState<string | null>(null);
   const [instruction, setInstruction] = useState("run this month's operations");
+  const [budget, setBudget] = useState('');
   const [toast, setToast] = useState<Toast | null>(null);
   const [redFlash, setRedFlash] = useState(false);
 
@@ -53,25 +54,22 @@ export default function DashboardPage() {
     }
   };
 
-  /** GRANT — wallet popup in wallet mode, server-signed in env-key mode. */
+  /** GRANT — the owner types the budget and signs the root delegation in MetaMask. */
   const doGrant = async () => {
     if (!state) return;
-    const cap = state.mode.rootCap;
-    if (state.mode.demoMode === 'wallet') {
-      if (!wallet.available) throw new Error('MetaMask not detected — install it or use DEMO_MODE=env-key');
-      if (!wallet.account) await wallet.connect();
-      if (!wallet.isBaseSepolia) await wallet.switchToBaseSepolia();
-      const prep = await post('/api/grant/prepare', { capUsdc: cap });
-      if (!prep.ok) throw new Error(prep.error || 'prepare failed');
-      if (prep.alreadyGranted) return prep;
-      if (prep.ownerSigner && wallet.account && wallet.account.toLowerCase() !== prep.ownerSigner.toLowerCase()) {
-        throw new Error(`Connect the owner wallet ${short(prep.ownerSigner)} (import OWNER_PRIVATE_KEY into MetaMask)`);
-      }
-      const signature = await wallet.signTypedData(prep.typedData); // ← MetaMask popup
-      return post('/api/grant/complete', { delegation: prep.delegation, signature, cap });
+    const cap = Number(budget);
+    if (!Number.isFinite(cap) || cap <= 0) throw new Error('Enter a budget (USDC) greater than 0.');
+    if (!wallet.available) throw new Error('MetaMask not detected — install it to grant.');
+    if (!wallet.account) await wallet.connect();
+    if (!wallet.isBaseSepolia) await wallet.switchToBaseSepolia();
+    const prep = await post('/api/grant/prepare', { capUsdc: cap });
+    if (!prep.ok) throw new Error(prep.error || 'prepare failed');
+    if (prep.alreadyGranted) return prep;
+    if (prep.ownerSigner && wallet.account && wallet.account.toLowerCase() !== prep.ownerSigner.toLowerCase()) {
+      throw new Error(`Connect the owner wallet ${short(prep.ownerSigner)} (import OWNER_PRIVATE_KEY into MetaMask)`);
     }
-    // env-key fallback
-    return post('/api/grant', { capUsdc: cap });
+    const signature = await wallet.signTypedData(prep.typedData); // ← MetaMask popup
+    return post('/api/grant/complete', { delegation: prep.delegation, signature, cap });
   };
 
   if (!state) return <div className="p-10 text-muted">Loading…</div>;
@@ -79,7 +77,6 @@ export default function DashboardPage() {
   const root = state.delegations.find((d) => d.parentId === null);
   const children = state.delegations.filter((d) => d.parentId);
   const procurement = children.find((d) => d.toRole === 'procurement');
-  const walletMode = state.mode.demoMode === 'wallet';
 
   const stepDone = {
     plan: children.length > 0,
@@ -95,13 +92,38 @@ export default function DashboardPage() {
         <div className="card p-5">
           <h2 className="label">1 · Owner grants delegation</h2>
           <p className="mt-2 text-sm text-muted">
-            One capped permission to the CFO agent: <b className="mono text-text">{state.mode.rootCap} USDC</b> / month.{' '}
-            {walletMode ? 'Signed by your connected MetaMask wallet — a real signature popup appears.' : 'Signed by owner key (env-key mode).'}
+            Set the monthly budget you authorize the CFO agent to manage, then sign with your
+            connected MetaMask wallet — a real signature popup appears.
           </p>
-          <button disabled={!!busy || !!root} onClick={() => act('grant', doGrant)} className="btn btn-primary mt-3">
-            {root ? '✓ Delegation granted' : busy === 'grant' ? 'Awaiting signature…' : walletMode ? '🦊 Grant via MetaMask' : `Grant ${state.mode.rootCap} USDC → CFO`}
-          </button>
-          {walletMode && !root && !wallet.account && (
+          {root ? (
+            <p className="mt-3 text-sm text-text">
+              ✓ Granted <b className="mono">{usdc(root.capUsdc)} USDC</b> / month to the CFO.
+            </p>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="control flex items-center gap-1 px-3 py-2">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  className="w-24 bg-transparent text-sm text-text outline-none"
+                />
+                <span className="text-xs text-muted">USDC</span>
+              </div>
+              <button
+                disabled={!!busy || !budget || Number(budget) <= 0}
+                onClick={() => act('grant', doGrant)}
+                className="btn btn-primary disabled:opacity-40"
+              >
+                {busy === 'grant' ? 'Awaiting signature…' : '🦊 Grant via MetaMask'}
+              </button>
+            </div>
+          )}
+          {!root && !wallet.account && (
             <p className="mt-2 text-xs text-pending">Connect MetaMask (top-right) — use the owner wallet.</p>
           )}
         </div>

@@ -36,7 +36,7 @@ export default function SettingsPage() {
           <Row k="Owner signer" v={state.mode.demoMode === 'wallet' ? 'MetaMask wallet' : 'env-key (OWNER_PRIVATE_KEY)'} />
           <Row k="Network" v="Base Sepolia" />
           <Row k="Chain ID" v={state.mode.chainId} mono />
-          <Row k="Root cap" v={`${state.mode.rootCap} USDC / month`} mono />
+          <Row k="Treasury cap" v={root ? `${usdc(cap)} USDC / month` : 'not granted'} mono />
           <Row
             k="Connected wallet"
             v={wallet.account ? <span className={wallet.isBaseSepolia ? 'text-success' : 'text-danger'}>{short(wallet.account)}</span> : '—'}
