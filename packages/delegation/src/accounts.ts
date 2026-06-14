@@ -3,10 +3,11 @@ import type { Hex } from 'viem';
 import { config, type AgentRole } from '@aliran/core';
 
 /**
- * Maps each agent role to its configured private key. The owner key is the
- * env-key fallback signer (used when DEMO_MODE=env-key). In MOCK_MODE these may
- * be empty; callers that only need an *address* can generate a deterministic
- * placeholder, while real broadcast paths assert presence.
+ * Maps each agent role to its configured private key. OWNER_PRIVATE_KEY is the
+ * owner smart-account's signer — the EOA the connected MetaMask wallet must sign
+ * the grant with. In MOCK_MODE these may be empty; callers that only need an
+ * *address* can generate a deterministic placeholder, while real broadcast paths
+ * assert presence.
  */
 export const ROLE_PK: Record<Exclude<AgentRole, 'owner'> | 'owner', string> = {
   owner: config.OWNER_PRIVATE_KEY,

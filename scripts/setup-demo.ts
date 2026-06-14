@@ -40,7 +40,7 @@ function writeEnvKeys(kv: Record<string, string>): string {
 
 console.log('\nAliran demo setup');
 line();
-console.log(`MOCK_MODE = ${config.MOCK_MODE}   DEMO_MODE = ${config.DEMO_MODE}`);
+console.log(`MOCK_MODE = ${config.MOCK_MODE}   (owner signs via MetaMask wallet)`);
 console.log(`Chain     = Base Sepolia (${config.CHAIN_ID})`);
 console.log(`USDC      = ${config.USDC_ADDRESS}`);
 line();

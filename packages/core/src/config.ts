@@ -23,7 +23,6 @@ function str(v: string | undefined, dflt = ''): string {
  */
 export const config = {
   MOCK_MODE: bool(process.env.MOCK_MODE, true),
-  DEMO_MODE: (str(process.env.DEMO_MODE, 'env-key') as 'env-key' | 'wallet'),
 
   CHAIN_ID: Number(str(process.env.CHAIN_ID, '84532')),
   RPC_URL: str(process.env.RPC_URL),

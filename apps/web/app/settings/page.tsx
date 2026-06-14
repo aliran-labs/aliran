@@ -33,7 +33,7 @@ export default function SettingsPage() {
         <section className="card p-5">
           <h2 className="label mb-3">Mode &amp; network</h2>
           <Row k="Broadcast mode" v={state.mode.mock ? 'MOCK (dry-run)' : 'LIVE (real on-chain)'} />
-          <Row k="Owner signer" v={state.mode.demoMode === 'wallet' ? 'MetaMask wallet' : 'env-key (OWNER_PRIVATE_KEY)'} />
+          <Row k="Owner signer" v="MetaMask wallet" />
           <Row k="Network" v="Base Sepolia" />
           <Row k="Chain ID" v={state.mode.chainId} mono />
           <Row k="Treasury cap" v={root ? `${usdc(cap)} USDC / month` : 'not granted'} mono />

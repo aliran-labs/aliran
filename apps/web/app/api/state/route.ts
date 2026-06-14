@@ -10,7 +10,7 @@ export async function GET() {
   seedTasksIfEmpty(); // auto-seed the task board on serverless cold start
   const db = store.read();
   return NextResponse.json({
-    mode: { mock: config.MOCK_MODE, demoMode: config.DEMO_MODE, chainId: config.CHAIN_ID },
+    mode: { mock: config.MOCK_MODE, chainId: config.CHAIN_ID },
     treasury: treasuryState(),
     ...db,
   });
